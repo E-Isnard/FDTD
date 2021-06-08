@@ -59,11 +59,11 @@ for i in range(nt):
         line2, = plt.plot(x,y2)
         plt.ylim([-3,3])
         plt.legend(["$H_y$","$E_z$"])
-        plt.title(f"Step n°1 ($\\eps={eps}$ and $\\mu={mu}$)")
+        # plt.title(f"Step n°1 ($\\eps={eps}$ and $\\mu={mu}$)")
     else:
         line.set_ydata(y)
         line2.set_ydata(y2)
-        plt.title(f"Etape n°{i+1} ($\\eps={eps}$ and $\\mu={mu}$)")
+        # plt.title(f"Etape n°{i+1} ($\\eps={eps}$ and $\\mu={mu}$)")
     plt.pause(0.1)
 
 plt.show()
