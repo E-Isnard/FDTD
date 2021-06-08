@@ -18,11 +18,11 @@ dt/(eps*dx)*sqrt(eps/mu) = dt/(sqrt(eps*mu)*dx) = dt*c/dx = 1/2
 # eps_0 = 8.85418782E-12 
 # mu_0 = 4*np.pi*1E-7
 L = 1
-Tmax = 10
+Tmax = 3
 eps = 10
 mu = 10
 c = (eps*mu)**(-1/2)
-dx=0.01
+dx=0.005
 dt = dx/(2*c)
 
 t = np.arange(0,Tmax,dt)
@@ -38,6 +38,7 @@ H = np.zeros((nt,nx))
 E = np.zeros((nt,nx))
 kSource = int(nx/2)
 source = 1*np.exp(-(t-Tmax/2)**2)
+source = np.sin(2*np.pi*t)
 # E[0,iSource] = 1
 #E[0] = np.exp(-100*(x-L/2)**2)
 # E[0] = np.sin(2*np.pi*x)
