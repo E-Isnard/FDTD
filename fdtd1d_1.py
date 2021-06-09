@@ -10,9 +10,6 @@ H_y and E_z only depend on x.
 
 We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 
-dt/(eps*dx)*sqrt(eps/mu) = dt/(sqrt(eps*mu)*dx) = dt*c/dx = 1/2
-
-(dt/(mu*dx))*sqrt(mu/eps) = dt*c/dx = 1/2
 """
 
 # eps_0 = 8.85418782E-12 
@@ -48,9 +45,14 @@ for i in range(nt-1):
 
     H[i+1,:-1] = H[i,:-1]+1/2*(E[i,1:]-E[i,:-1])
     E[i+1,1:] = E[i,1:]+1/2*(H[i+1,1:]-H[i+1,:-1])
-    #Absorbing boundary conditions
-    E[i+1,0]= E[i-1,1]
-    E[i+1,-1] = E[i-1,2]
+
+    #ABC 2 (from "Electromagnetism simulation using the fdtd method with python" textbook)
+    # E[i+1,0]= E[i-1,1]
+    # E[i+1,-1] = E[i-1,2]
+
+    #ABC 2 (from Liu phd thesis)
+    E[i+1,0] = E[i,1]-1/3*(E[i+1,1]-E[i,0])
+    E[i+1,-1] = E[i,-2]-1/3*(E[i+1,-2]-E[i,-1])
     #Hard source
     E[i+1,kSource] = source[i+1]
 
