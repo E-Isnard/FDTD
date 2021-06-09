@@ -18,7 +18,7 @@ dt/(eps*dx)*sqrt(eps/mu) = dt/(sqrt(eps*mu)*dx) = dt*c/dx = 1/2
 # eps_0 = 8.85418782E-12 
 # mu_0 = 4*np.pi*1E-7
 L = 1
-Tmax = 3
+Tmax = 15
 eps = 10
 mu = 10
 c = (eps*mu)**(-1/2)
@@ -37,19 +37,21 @@ print(f"nx={nx}")
 H = np.zeros((nt,nx))
 E = np.zeros((nt,nx))
 kSource = int(nx/2)
-source = 1*np.exp(-(t-Tmax/2)**2)
+source = 1*np.exp(-(t-Tmax/4)**2)
 source = np.sin(2*np.pi*t)
 # E[0,iSource] = 1
 #E[0] = np.exp(-100*(x-L/2)**2)
 # E[0] = np.sin(2*np.pi*x)
 E[0,kSource]=source[0]
+
 for i in range(nt-1):
 
     H[i+1,:-1] = H[i,:-1]+1/2*(E[i,1:]-E[i,:-1])
-    H[i+1,-1] = H[i+1,-2]
-
     E[i+1,1:] = E[i,1:]+1/2*(H[i+1,1:]-H[i+1,:-1])
-    E[i+1,0]=E[i+1,1]
+    #Absorbing boundary conditions
+    E[i+1,0]= E[i-1,1]
+    E[i+1,-1] = E[i-1,2]
+    #Hard source
     E[i+1,kSource] = source[i+1]
 
 for i in range(nt):
@@ -60,11 +62,9 @@ for i in range(nt):
         line2, = plt.plot(x,y2)
         plt.ylim([-3,3])
         plt.legend(["$H_y$","$E_z$"])
-        # plt.title(f"Step n°1 ($\\eps={eps}$ and $\\mu={mu}$)")
     else:
         line.set_ydata(y)
         line2.set_ydata(y2)
-        # plt.title(f"Etape n°{i+1} ($\\eps={eps}$ and $\\mu={mu}$)")
     plt.pause(0.1)
 
 plt.show()

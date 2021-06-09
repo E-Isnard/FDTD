@@ -19,11 +19,11 @@ dt/(eps*dx)*sqrt(eps/mu) = dt/(sqrt(eps*mu)*dx) = dt*c/dx = 1/2
 # eps_0 = 8.85418782E-12 
 # mu_0 = 4*np.pi*1E-7
 L = 1
-Tmax = 15
+Tmax = 30
 dx=5E-3
 x = np.arange(0,L,dx)
 nx = len(x)
-epsR=4
+epsR=100
 eps=10
 
 mu = 10
@@ -50,8 +50,8 @@ E = np.zeros((nt,nx))
 i1 = int(nx/2)-30
 i2 = nx-1
 kSource = 0
-source = 1*np.exp(-(t-Tmax/2)**2)
 source = np.sin(2*np.pi*t)
+source = 1*np.exp(-(t-5)**2)
 b = 0.5*np.ones((nx,))
 b[i1:i2]/=epsR
 
@@ -63,11 +63,13 @@ E[0,kSource]=source[0]
 for i in range(nt-1):
 
     H[i+1,:-1] = H[i,:-1]+1/2*(E[i,1:]-E[i,:-1])
-    H[i+1,-1] = H[i+1,-2]
 
     E[i+1,1:] = E[i,1:]+b[1:]*(H[i+1,1:]-H[i+1,:-1])
-    E[i+1,0]=E[i+1,1]
-    E[i+1,kSource] += source[i+1]
+    # Absorbing boundary conditions
+    E[i+1,0]=E[i-1,1]
+    E[i+1,-1]=E[i-1,-2]
+    #Soft source
+    E[i+1,kSource] = source[i+1]
 
 for i in range(nt):
     y = H[i]
@@ -83,7 +85,7 @@ for i in range(nt):
         line.set_ydata(y)
         line2.set_ydata(y2)
         # plt.title(f"Etape n°{i+1} ($\\eps={eps}$ and $\\mu={mu}$)")
-    plt.pause(0.1)
+    plt.pause(0.001)
 
 plt.show()
 
