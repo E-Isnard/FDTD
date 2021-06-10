@@ -67,7 +67,7 @@ for i in range(nt):
     else:
         line.set_ydata(y)
         line2.set_ydata(y2)
-    plt.pause(0.1)
+    plt.pause(0.001)
 
 plt.show()
 
