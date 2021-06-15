@@ -17,10 +17,10 @@ We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 # mu_0 = 4*np.pi*1E-7
 L = 1
 Tmax = 30
-dx=5E-3
+dx=2.5E-3
 x = np.arange(0,L,dx)
 nx = len(x)
-epsR=4
+epsR=1
 eps=10
 
 mu = 10
@@ -44,11 +44,11 @@ print(f"tau={np.round(tau,2)}")
 H = np.zeros((nt,nx))
 E = np.zeros((nt,nx))
 #Position of the dielectric
-i1 = int(nx/2)-30
-i2 = nx-20
-kSource = 0
-source = np.sin(2*np.pi*t)
+i1 = int(nx/2)
+i2 = int(nx/2)+40
+kSource = int(nx/2)
 source = 1*np.exp(-(t-5)**2)
+source = np.sin(2*np.pi*t)
 b = 0.5*np.ones((nx,))
 b[i1:i2]/=epsR
 
@@ -59,9 +59,8 @@ E[0,kSource]=source[0]
 
 for i in range(nt-1):
 
-    H[i+1,:-1] = H[i,:-1]+1/2*(E[i,1:]-E[i,:-1])
-
-    E[i+1,1:] = E[i,1:]+b[1:]*(H[i+1,1:]-H[i+1,:-1])
+    H[i+1,1:] = H[i,1:]+1/2*(E[i,1:]-E[i,:-1])
+    E[i+1,:-1] = E[i,:-1]+b[:-1]*(H[i+1,1:]-H[i+1,:-1])
     #ABC 2 (from "Electromagnetism simulation using the fdtd method with python" textbook)
     # E[i+1,0]= E[i-1,1]
     # E[i+1,-1] = E[i-1,2]
@@ -69,6 +68,8 @@ for i in range(nt-1):
     #ABC 2 (from Liu phd thesis)
     E[i+1,0] = E[i,1]-1/3*(E[i+1,1]-E[i,0])
     E[i+1,-1] = E[i,-2]-1/3*(E[i+1,-2]-E[i,-1])
+    H[i+1,0] = H[i,1]-1/3*(H[i+1,1]-H[i,0])
+    H[i+1,-1] = H[i,-2]-1/3*(H[i+1,-2]-H[i,-1])
 
     #Hard source
     E[i+1,kSource] = source[i+1]

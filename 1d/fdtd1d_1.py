@@ -34,8 +34,8 @@ print(f"nx={nx}")
 H = np.zeros((nt,nx))
 E = np.zeros((nt,nx))
 kSource = int(nx/2)
-source = 1*np.exp(-(t-Tmax/4)**2)
 source = np.sin(2*np.pi*t)
+source = 1*np.exp(-(t-Tmax/4)**2)
 # E[0,iSource] = 1
 #E[0] = np.exp(-100*(x-L/2)**2)
 # E[0] = np.sin(2*np.pi*x)
@@ -43,8 +43,8 @@ E[0,kSource]=source[0]
 
 for i in range(nt-1):
 
-    H[i+1,:-1] = H[i,:-1]+1/2*(E[i,1:]-E[i,:-1])
-    E[i+1,1:] = E[i,1:]+1/2*(H[i+1,1:]-H[i+1,:-1])
+    H[i+1,1:] = H[i,1:]+1/2*(E[i,1:]-E[i,:-1])
+    E[i+1,:-1] = E[i,:-1]+1/2*(H[i+1,1:]-H[i+1,:-1])
 
     #ABC 2 (from "Electromagnetism simulation using the fdtd method with python" textbook)
     # E[i+1,0]= E[i-1,1]
