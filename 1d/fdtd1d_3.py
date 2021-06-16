@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from numpy.core.fromnumeric import repeat
+from numpy.lib.function_base import gradient
+from scipy.signal import hilbert
 
 """
 1D FDTD with time and space dependant electric permitivity
@@ -14,11 +17,11 @@ We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 """
 
 # Units
-t_unit = 1E-9 #ns
-x_unit = 1E-3 #mm
+t_unit = 1E-9  # ns
+x_unit = 1E-3  # mm
 
 xmax = 300E-3/x_unit
-Tmax = 6E-9/t_unit
+Tmax = 10E-9/t_unit
 dx = 1.5E-3/x_unit
 # courant_number = c*dt/dx
 courant_number = 1/2
@@ -103,7 +106,7 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
     return (t, x, E, H)
 
 
-def anim_E_H(t, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
+def anim_E_H(t, x, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
     for i in range(len(t)):
         y = H[i]
         y2 = E[i]
@@ -125,8 +128,39 @@ def anim_E_H(t, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
     plt.show()
 
 
-def plot_E(E, ko):
+def anim2_E_H(t,x,E, H, k1, k2, y_low, y_high, interval=1E-3,show=True, save=False):
+    nt = len(t)
+    nx = len(x)
+    fig = plt.figure()
+    line, line2 = plt.plot(x, np.array([E[0], H[0]]).T)
 
+    plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
+    plt.xlabel("x (mm)")
+    plt.ylabel("Amplitude (A/m)")
+    plt.legend(["$H_y$", "$\\tilde{E}_z$"])
+    plt.fill_betweenx([-10, 10], x1=x[k1],
+                      x2=x[k2], color="grey", alpha=0.8)
+    plt.ylim(y_low, y_high)
+    plt.xlim(0, xmax)
+
+    def animate(i):
+        y1 = E[i].reshape((nx, 1))
+        y2 = H[i].reshape((nx, 1))
+        line.set_data(x, y1)
+        line2.set_data(x, y2)
+
+    frames = nt/5 if save else nt
+    ani = animation.FuncAnimation(fig, animate, interval=interval, frames=frames)
+
+    if save:
+        ani.save("anim.gif",fps=60)
+    if show:
+        plt.show()
+    plt.close()
+
+
+
+def plot_E(E, ko):
     plt.plot(t, E[:, ko])
     plt.title(
         "Normalized Electric Field $\\tilde{E}_z(x_0,t)$ with $x_0=x_{out}+2\Delta x$")
@@ -146,13 +180,14 @@ def w(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, ks, ws, ko):
     dt = t[1]-t[0]
     w_vec = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*dt)
     w_vec2 = (phi[1:]-phi[:-1])/dt
-    w_vec3 = np.gradient(phi,t)
+    w_vec3 = np.gradient(phi, t)
 
-    return (phi, w_vec,w_vec2,w_vec3, E1, E2)
+    return (phi, w_vec, w_vec2, w_vec3, E1, E2)
 
 
 t, x, E, H = FDTD_1D(Tmax, courant_number, dx, xmax,
                      epsR_func, k1, k2, source_func, ks)
+
 # coeff = (2*np.tan(wm*t/2)+b)/np.sqrt(4-b**2)
 # coeff2 = wm*L*np.sqrt(4-b**2)
 # coeff3 = np.arctan(coeff)-coeff2
@@ -190,4 +225,13 @@ plt.show()
 # plt.show()
 
 plot_E(E, k2+2)
-anim_E_H(t, E, H, k1, k2, -5, 5, 1)
+anim2_E_H(t,x,E,H,k1,k2,-5,5,1E-4,1,0)
+
+ana_signal = hilbert(E[:,k2+2])
+instantaneous_phase = np.unwrap(np.angle(ana_signal))
+instantaneous_frequency = (1/(np.pi*2)*np.gradient(instantaneous_phase,t))
+plt.show()
+plt.plot(t,instantaneous_phase)
+plt.show()
+plt.plot(t,instantaneous_frequency)
+plt.show()
