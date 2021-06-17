@@ -37,7 +37,7 @@ ws = 1E10*2*np.pi*t_unit
 wm = 1E9*2*np.pi*t_unit
 
 # Length of the dielectric stab
-L = 93E-3/x_unit
+L = 3E-3/x_unit
 
 # Position of the dielectric
 shift = int(L/dx)
@@ -47,8 +47,10 @@ k2 = k1+shift
 # Source and its position
 ks = 10
 
+
 def source_func(t):
     return np.sin(ws*t)
+
 
 # Modulation depth
 b = 0.67
@@ -56,8 +58,10 @@ b = 0.67
 # Initial relative electric permitivity in the stab
 epsR_0 = 3
 
+
 def epsR_func(t):
     return epsR_0*(1+b*np.sin(wm*t))
+
 
 def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
@@ -97,11 +101,9 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
         E[i+1, 0] = E[i, 1]+k_abc*(E[i+1, 1]-E[i, 0])
         E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
-        H[i+1, 0] = H[i, 1]+k_abc*(H[i+1, 1]-H[i, 0])
-        H[i+1, -1] = H[i, -2]+k_abc*(H[i+1, -2]-H[i, -1])
 
         # Soft source
-        E[i+1, ks] += source[i+1]
+        E[i+1, ks] += source[i+1]*courant_number
 
     return (t, x, E, H)
 
@@ -116,6 +118,7 @@ def anim_E_H(t, x, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
             plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
             plt.xlabel("x (mm)")
             plt.ylabel("Amplitude (A/m)")
+            plt.grid(ls="-")
             plt.ylim([y_low, y_high])
             plt.legend(["$H_y$", "$\\tilde{E}_z$"])
             plt.fill_betweenx([y_low, y_high], x1=x[k1],
@@ -128,7 +131,7 @@ def anim_E_H(t, x, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
     plt.show()
 
 
-def anim2_E_H(t,x,E, H, k1, k2, y_low, y_high, interval=1E-3,show=True, save=False):
+def anim2_E_H(t, x, E, H, k1, k2, y_low, y_high, interval=1E-3, show=True, save=False):
     nt = len(t)
     nx = len(x)
     fig = plt.figure()
@@ -150,14 +153,14 @@ def anim2_E_H(t,x,E, H, k1, k2, y_low, y_high, interval=1E-3,show=True, save=Fal
         line2.set_data(x, y2)
 
     frames = nt/5 if save else nt
-    ani = animation.FuncAnimation(fig, animate, interval=interval, frames=frames)
+    ani = animation.FuncAnimation(
+        fig, animate, interval=interval, frames=frames)
 
     if save:
-        ani.save("anim.gif",fps=60)
+        ani.save("anim.gif", fps=60)
     if show:
         plt.show()
     plt.close()
-
 
 
 def plot_E(E, ko):
@@ -166,6 +169,7 @@ def plot_E(E, ko):
         "Normalized Electric Field $\\tilde{E}_z(x_0,t)$ with $x_0=x_{out}+2\Delta x$")
     plt.xlabel("time (ns)")
     plt.ylabel("$\\tilde{E}_z(x_0,t)$ (A/m)")
+    plt.grid(ls="--")
     plt.show()
 
 
@@ -188,50 +192,59 @@ def w(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, ks, ws, ko):
 t, x, E, H = FDTD_1D(Tmax, courant_number, dx, xmax,
                      epsR_func, k1, k2, source_func, ks)
 
-# coeff = (2*np.tan(wm*t/2)+b)/np.sqrt(4-b**2)
-# coeff2 = wm*L*np.sqrt(4-b**2)
-# coeff3 = np.arctan(coeff)-coeff2
-# w_ext = (1/np.cos(wm*t/2)**2)/(1+coeff**2)*ws/np.cos(coeff3**2)**2 * 1/(1+(np.sqrt(4-b**2)/2*np.tan(coeff3)-b/2)**2)
 
+def sec2(t): return 1/np.cos(t)**2
+
+
+c1 = np.sqrt(4-b**2)
+c2 = (2*np.tan(wm*t/2)+b)/c1
+c3 = np.arctan(c2)-wm*L*c1
+f1 = sec2(wm*t/2)/(1+c2**2)
+f2 = ws*(sec2(c3))/(1+(c1/2*np.tan(c3)-b/2)**2)
+f_ext_thick = f1*f2/(2*np.pi)
+
+# Compute the extant instantenious frequ
 v0 = 1/(np.sqrt(epsR_0*mu_0*eps_0))
-w_ext = ws*(1-(b*L/(2*v0))*np.cos(wm*t)/np.sqrt(1+b*np.sin(wm*t)))
+f_ext_thin = ws*(1-(b*L/(2*v0))*np.cos(wm*t) /
+                 np.sqrt(1+b*np.sin(wm*t)))/(2*np.pi)
 
-phi, w_vec,w_vec2,w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
-                       epsR_func, k1, k2, ks, ws, k2+2)
+f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
 
-plt.plot(t, phi)
-plt.title("$\\varphi$")
-plt.xlabel("Time (ns)")
-plt.ylabel("Angle(rad)")
-plt.show()
+phi, w_vec, w_vec2, w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
+                                       epsR_func, k1, k2, ks, ws, k2+2)
 
-plt.plot(t[2:-2], w_vec/(2*np.pi))
-plt.title("$f_{FDTD}$ Liu")
-plt.show()
-
-plt.plot(t[1:], w_vec2/(2*np.pi))
-plt.title("$f_{FDTD}$ df simple")
-plt.show()
-
-plt.plot(t[1:], w_vec2/(2*np.pi))
-plt.title("$f_{FDTD}$ numpy grad")
-plt.show()
-
-
-# plt.plot(t, w_ext/(np.pi*2))
-# plt.title("$f_{ext}$")
+# plt.plot(t, phi)
+# plt.title("$\\varphi$")
 # plt.xlabel("Time (ns)")
-# plt.ylabel("Frequency (GHz)")
+# plt.ylabel("Angle(rad)")
+# plt.show()
+
+# plt.plot(t[2:-2], w_vec/(2*np.pi))
+# plt.title("$f_{FDTD}$ Liu")
+# plt.show()
+
+# plt.plot(t[1:], w_vec2/(2*np.pi))
+# plt.title("$f_{FDTD}$ df simple")
+# plt.show()
+
+# plt.plot(t[1:], w_vec2/(2*np.pi))
+# plt.title("$f_{FDTD}$ numpy grad")
 # plt.show()
 
 plot_E(E, k2+2)
-anim2_E_H(t,x,E,H,k1,k2,-5,5,1E-4,1,0)
+anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-4, 1, 0)
 
-ana_signal = hilbert(E[:,k2+2])
+ana_signal = hilbert(E[:, k2+2])
 instantaneous_phase = np.unwrap(np.angle(ana_signal))
-instantaneous_frequency = (1/(np.pi*2)*np.gradient(instantaneous_phase,t))
+instantaneous_frequency = (1/(np.pi*2)*np.gradient(instantaneous_phase, t))
+# plt.show()
+# plt.plot(t,instantaneous_phase)
 plt.show()
-plt.plot(t,instantaneous_phase)
-plt.show()
-plt.plot(t,instantaneous_frequency)
+plt.plot(t, instantaneous_frequency,
+         label="Computed frequency (hilbert transform)")
+plt.plot(t, f_ext, label="Analytical frequency")
+plt.xlabel("Time (ns)")
+plt.ylabel("Frequency (GHz)")
+plt.grid(ls="--")
+plt.legend()
 plt.show()
