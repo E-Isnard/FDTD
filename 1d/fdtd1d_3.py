@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from numpy.core.fromnumeric import repeat
-from numpy.lib.function_base import gradient
-from scipy.signal import hilbert
+from scipy.signal import hilbert, medfilt
+from scipy.ndimage import median_filter
 
 """
 1D FDTD with time and space dependant electric permitivity
@@ -32,11 +31,25 @@ mu_0_SI = 4*np.pi*1E-7
 eps_0 = eps_0_SI/t_unit**4*x_unit**3
 mu_0 = mu_0_SI*t_unit**2/x_unit
 
+
 # Pulsation for source and epsR
 ws = 1E10*2*np.pi*t_unit
 wm = 1E9*2*np.pi*t_unit
 
+# Modulation depth
+b = 0.67
+
+# Initial relative electric permitivity in the stab
+epsR_0 = 3
+
+
+def epsR_func(t):
+    return epsR_0*(1+b*np.sin(wm*t))
+
+
 # Length of the dielectric stab
+v0 = (mu_0*eps_0*epsR_0)**(-1/2)
+
 L = 3E-3/x_unit
 
 # Position of the dielectric
@@ -50,17 +63,6 @@ ks = 10
 
 def source_func(t):
     return np.sin(ws*t)
-
-
-# Modulation depth
-b = 0.67
-
-# Initial relative electric permitivity in the stab
-epsR_0 = 3
-
-
-def epsR_func(t):
-    return epsR_0*(1+b*np.sin(wm*t))
 
 
 def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
@@ -204,12 +206,13 @@ f2 = ws*(sec2(c3))/(1+(c1/2*np.tan(c3)-b/2)**2)
 f_ext_thick = f1*f2/(2*np.pi)
 
 # Compute the extant instantenious frequ
-v0 = 1/(np.sqrt(epsR_0*mu_0*eps_0))
-f_ext_thin = ws*(1-(b*L/(2*v0))*np.cos(wm*t) /
-                 np.sqrt(1+b*np.sin(wm*t)))/(2*np.pi)
+
+f_ext_thin = 1/(2*np.pi)*ws*(1-(b*L/(2*v0)) *
+                             np.cos(wm*t) * (1+b*np.sin(wm*t))**(-1/2))
 
 f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
-
+# f_ext = f_ext_thin
+# f_ext = f_ext_thick
 phi, w_vec, w_vec2, w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
                                        epsR_func, k1, k2, ks, ws, k2+2)
 
@@ -232,17 +235,23 @@ phi, w_vec, w_vec2, w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
 # plt.show()
 
 plot_E(E, k2+2)
-anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-4, 1, 0)
+anim2_E_H(t, x, E, H, k1, k2, -5, 5, 20, 1, 0)
 
 ana_signal = hilbert(E[:, k2+2])
-instantaneous_phase = np.unwrap(np.angle(ana_signal))
-instantaneous_frequency = (1/(np.pi*2)*np.gradient(instantaneous_phase, t))
+phi= np.unwrap(np.angle(ana_signal))
+f_hilbert = (1/(np.pi*2)*np.gradient(phi, t))
 # plt.show()
 # plt.plot(t,instantaneous_phase)
 plt.show()
-plt.plot(t, instantaneous_frequency,
-         label="Computed frequency (hilbert transform)")
-plt.plot(t, f_ext, label="Analytical frequency")
+
+dt = t[1]-t[0]
+i2 = int(2/dt)
+i9 = int(9/dt)
+f_fdtd = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
+plt.plot(t[i2:i9], f_hilbert[i2:i9],
+         label="$f_{Hilbert}$")
+plt.plot(t[i2:i9], f_ext[i2:i9], label="$f_{ext}$")
+plt.plot(t[i2:i9], f_fdtd, label="$f_{Liu}$")
 plt.xlabel("Time (ns)")
 plt.ylabel("Frequency (GHz)")
 plt.grid(ls="--")
