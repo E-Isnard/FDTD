@@ -50,7 +50,7 @@ def epsR_func(t):
 # Length of the dielectric stab
 v0 = (mu_0*eps_0*epsR_0)**(-1/2)
 
-L = 3E-3/x_unit
+L = 93E-3/x_unit
 
 # Position of the dielectric
 shift = int(L/dx)
@@ -105,7 +105,7 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
         E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
 
         # Soft source
-        E[i+1, ks] += source[i+1]*courant_number
+        E[i+1, ks] += source[i+1]
 
     return (t, x, E, H)
 
@@ -235,7 +235,7 @@ phi, w_vec, w_vec2, w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
 # plt.show()
 
 plot_E(E, k2+2)
-anim2_E_H(t, x, E, H, k1, k2, -5, 5, 20, 1, 0)
+anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-9, 1, 0)
 
 ana_signal = hilbert(E[:, k2+2])
 phi= np.unwrap(np.angle(ana_signal))
