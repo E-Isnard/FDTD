@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from scipy.signal import hilbert, medfilt
+from scipy.signal import hilbert
 from scipy.ndimage import median_filter
 
 """
@@ -50,7 +50,9 @@ def epsR_func(t):
 # Length of the dielectric stab
 v0 = (mu_0*eps_0*epsR_0)**(-1/2)
 
-L = 93E-3/x_unit
+# L = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
+L=93E-3/x_unit
+print(f"{L = }")
 
 # Position of the dielectric
 shift = int(L/dx)
@@ -200,15 +202,14 @@ def sec2(t): return 1/np.cos(t)**2
 
 c1 = np.sqrt(4-b**2)
 c2 = (2*np.tan(wm*t/2)+b)/c1
-c3 = np.arctan(c2)-wm*L*c1
+c3 = np.arctan(c2)-wm*L*c1/(4*v0)
 f1 = sec2(wm*t/2)/(1+c2**2)
 f2 = ws*(sec2(c3))/(1+(c1/2*np.tan(c3)-b/2)**2)
 f_ext_thick = f1*f2/(2*np.pi)
 
 # Compute the extant instantenious frequ
 
-f_ext_thin = 1/(2*np.pi)*ws*(1-(b*L/(2*v0)) *
-                             np.cos(wm*t) * (1+b*np.sin(wm*t))**(-1/2))
+f_ext_thin = 1/(np.pi*2)*ws*(1-b*L/(2*v0)*np.cos(wm*t)/(np.sqrt(1+b*np.sin(wm*t))))
 
 f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
 # f_ext = f_ext_thin
