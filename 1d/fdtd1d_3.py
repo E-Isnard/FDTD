@@ -38,7 +38,6 @@ wm = 1E9*2*np.pi*t_unit
 
 # Modulation depth
 b = 0.67
-
 # Initial relative electric permitivity in the stab
 epsR_0 = 3
 
@@ -51,7 +50,8 @@ def epsR_func(t):
 v0 = (mu_0*eps_0*epsR_0)**(-1/2)
 
 # L = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
-L=93E-3/x_unit
+L = 3E-3/x_unit
+
 print(f"{L = }")
 
 # Position of the dielectric
@@ -120,8 +120,8 @@ def anim_E_H(t, x, E, H, k1, k2, y_low, y_high, anim=True, interval=1E-3):
             line, = plt.plot(x, y)
             line2, = plt.plot(x, y2)
             plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
-            plt.xlabel("x (mm)")
-            plt.ylabel("Amplitude (A/m)")
+            plt.xlabel("x [mm]")
+            plt.ylabel("Amplitude [A/m]")
             plt.grid(ls="-")
             plt.ylim([y_low, y_high])
             plt.legend(["$H_y$", "$\\tilde{E}_z$"])
@@ -142,8 +142,8 @@ def anim2_E_H(t, x, E, H, k1, k2, y_low, y_high, interval=1E-3, show=True, save=
     line, line2 = plt.plot(x, np.array([E[0], H[0]]).T)
 
     plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
-    plt.xlabel("x (mm)")
-    plt.ylabel("Amplitude (A/m)")
+    plt.xlabel("x [mm]")
+    plt.ylabel("Amplitude [A/m]")
     plt.legend(["$H_y$", "$\\tilde{E}_z$"])
     plt.fill_betweenx([-10, 10], x1=x[k1],
                       x2=x[k2], color="grey", alpha=0.8)
@@ -171,8 +171,8 @@ def plot_E(E, ko):
     plt.plot(t, E[:, ko])
     plt.title(
         "Normalized Electric Field $\\tilde{E}_z(x_0,t)$ with $x_0=x_{out}+2\Delta x$")
-    plt.xlabel("time (ns)")
-    plt.ylabel("$\\tilde{E}_z(x_0,t)$ (A/m)")
+    plt.xlabel("time [ns]")
+    plt.ylabel("$\\tilde{E}_z(x_0,t)$ [A/m]")
     plt.grid(ls="--")
     plt.show()
 
@@ -187,10 +187,8 @@ def w(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, ks, ws, ko):
     phi = np.arctan2(E1[:, ko], E2[:, ko])
     dt = t[1]-t[0]
     w_vec = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*dt)
-    w_vec2 = (phi[1:]-phi[:-1])/dt
-    w_vec3 = np.gradient(phi, t)
 
-    return (phi, w_vec, w_vec2, w_vec3, E1, E2)
+    return (phi, w_vec, E1, E2)
 
 
 t, x, E, H = FDTD_1D(Tmax, courant_number, dx, xmax,
@@ -209,50 +207,29 @@ f_ext_thick = f1*f2/(2*np.pi)
 
 # Compute the extant instantenious frequ
 
-f_ext_thin = 1/(np.pi*2)*ws*(1-b*L/(2*v0)*np.cos(wm*t)/(np.sqrt(1+b*np.sin(wm*t))))
-
+f_ext_thin = 1/(np.pi*2)*ws*(1-b*L/(2*v0) *
+                             np.cos(wm*t)/(np.sqrt(1+b*np.sin(wm*t))))
 f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
-# f_ext = f_ext_thin
-# f_ext = f_ext_thick
-phi, w_vec, w_vec2, w_vec3, E1, E2 = w(Tmax, courant_number, dx, xmax,
-                                       epsR_func, k1, k2, ks, ws, k2+2)
 
-# plt.plot(t, phi)
-# plt.title("$\\varphi$")
-# plt.xlabel("Time (ns)")
-# plt.ylabel("Angle(rad)")
-# plt.show()
-
-# plt.plot(t[2:-2], w_vec/(2*np.pi))
-# plt.title("$f_{FDTD}$ Liu")
-# plt.show()
-
-# plt.plot(t[1:], w_vec2/(2*np.pi))
-# plt.title("$f_{FDTD}$ df simple")
-# plt.show()
-
-# plt.plot(t[1:], w_vec2/(2*np.pi))
-# plt.title("$f_{FDTD}$ numpy grad")
-# plt.show()
+phi, w_vec, E1, E2 = w(Tmax, courant_number, dx, xmax,
+                       epsR_func, k1, k2, ks, ws, k2+2)
 
 plot_E(E, k2+2)
 anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-9, 1, 0)
 
 ana_signal = hilbert(E[:, k2+2])
-phi= np.unwrap(np.angle(ana_signal))
-f_hilbert = (1/(np.pi*2)*np.gradient(phi, t))
-# plt.show()
-# plt.plot(t,instantaneous_phase)
-plt.show()
+instanteneous_phase = np.unwrap(np.angle(ana_signal))
+f_hilbert = (1/(np.pi*2)*np.gradient(instanteneous_phase, t))
 
 dt = t[1]-t[0]
 i2 = int(2/dt)
 i9 = int(9/dt)
-f_fdtd = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
+f_liu = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
+# f_liu = w_vec[i2:i9]/(2*np.pi)
 plt.plot(t[i2:i9], f_hilbert[i2:i9],
          label="$f_{Hilbert}$")
 plt.plot(t[i2:i9], f_ext[i2:i9], label="$f_{ext}$")
-plt.plot(t[i2:i9], f_fdtd, label="$f_{Liu}$")
+plt.plot(t[i2:i9], f_liu, label="$f_{Liu}$")
 plt.xlabel("Time (ns)")
 plt.ylabel("Frequency (GHz)")
 plt.grid(ls="--")
