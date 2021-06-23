@@ -50,7 +50,7 @@ def epsR_func(t):
 v0 = (mu_0*eps_0*epsR_0)**(-1/2)
 
 # L = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
-L = 3E-3/x_unit
+L = 93E-3/x_unit
 
 print(f"{L = }")
 

@@ -16,8 +16,8 @@ t_unit = 1E-9  # ns
 xy_unit = 1E-3  # mm
 
 xymax = 100E-3/xy_unit
-Tmax = 10E-9/t_unit
-dxy = 1E-4/xy_unit
+Tmax = 20E-9/t_unit
+dxy = 1E-3/xy_unit
 # courant_number = c*dt/dx
 courant_number = 1/2
 
@@ -32,7 +32,7 @@ dt = courant_number*dxy/c
 x = np.arange(0, xymax, dxy)
 y = np.arange(0, xymax, dxy)
 t = np.arange(0, Tmax, dt)
-
+X,Y = np.meshgrid(x,y)
 
 nxy = len(x)
 nt = len(t)
@@ -41,7 +41,7 @@ print(f"{nt = }")
 Hx = np.zeros((nt, nxy, nxy))
 Hy = np.zeros((nt, nxy, nxy))
 Ez = np.zeros((nt, nxy, nxy))
-med = int(nxy/2)
+Ez[0] = np.exp(-0.1*((X-40)**2+(Y-40)**2)) 
 for i in range(nt-1):
     for j in range(1,nxy):
         for k in range(1,nxy):
@@ -52,15 +52,12 @@ for i in range(nt-1):
         for k in range(nxy-1):
             Ez[i+1,j,k] = Ez[i,j,k]+courant_number*(Hy[i+1,j+1,k]-Hy[i+1,i,j]-Hx[i+1,j,k+1]+Hx[i+1,j,k])
     
-    Ez[i+1,med,med]=10
     k = int((i+1)/(nt-1)*20)
     print(f'\rProgression:[{k*"#"}{(20-k)*" "}] [{i+1}/{nt-1}]', end='', flush=True)
 
 X, Y = np.meshgrid(x, y)
-fig = plt.figure()
+fig = plt.figure(figsize=(30,30))
 ax = plt.axes(projection="3d")
-
-ax.plot_surface(X, Y, Ez[0], cmap="viridis")
 
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
@@ -73,7 +70,6 @@ def anim(i):
     ax.set_zlim(-10, 10)
     return plot,
 
-
 a = animation.FuncAnimation(
-    fig, anim, interval=1000/10, frames=1000, blit=False, repeat=False)
+    fig, anim, interval=1000/10, frames=nt-1, blit=False, repeat=False)
 plt.show()
