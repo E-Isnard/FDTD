@@ -18,7 +18,7 @@ def progress(i, n):
     i += 1
     k = int(i/n*20)
     print(
-        f'\rProgression:[{k*"#"}{(20-k)*" "}] [{round((i)/(n)*100,2)} %]', end='', flush=True)
+        f'\rProgression:[{k*"#"}{(20-k)*" "}] [{round((i)/(n)*100,2)} %]', end='' if i != n else "\n", flush=True)
 
 
 # Units
@@ -83,7 +83,7 @@ for i in range(nt-1):
     progress(i, nt-1)
 
 
-print(f"\nCalculations took {round(perf_counter()-s,2)} s")
+print(f"Calculations took {round(perf_counter()-s,2)} s")
 print(
     f"Memory taken by Hx,Hy and Ez: {round((Hx.nbytes+Hy.nbytes+Ez.nbytes)/(1024**2),2)} MB")
 
@@ -101,7 +101,6 @@ def anim3d():
     # # Sets of the form [x, y, fi] (with constant y) representing each function 3D line.
     # set1  = [x2, 2.5*np.ones(len(x2)), 0.2*np.ones(len(x2))]
 
-
     def anim(i):
         ax.clear()
         ax.set_zlim(-0.05, 0.05)
@@ -111,10 +110,10 @@ def anim3d():
         # plt.title(i)
         return plot,
 
-
     a = animation.FuncAnimation(
         fig, anim, interval=1000/60, frames=int((nt-1)*0.75), blit=False, repeat=False)
-    # a.save("oui2.gif")
+    print("anim3d:")
+    a.save("animation3d.gif", fps=60, progress_callback=progress)
     plt.show()
 
 
@@ -131,10 +130,12 @@ def animContour():
         plot = ax.contourf(X, Y, Ez[i], vmin=0, vmax=0.1, levels=100)
         return plot,
 
-
     a2 = animation.FuncAnimation(
         fig, anim2, interval=1000/60, frames=int((nt-1)*1), blit=False, repeat=False)
-    a2.save("contour.gif",fps=60,progress_callback=progress)
+    print("contour:")
+    a2.save("contour.gif", fps=60, progress_callback=progress)
     plt.show()
 
+
+anim3d()
 animContour()
