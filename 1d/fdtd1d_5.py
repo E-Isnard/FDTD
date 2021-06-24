@@ -31,7 +31,7 @@ eps_0_SI = 8.85418782E-12
 mu_0_SI = 4*np.pi*1E-7
 eps_0 = eps_0_SI/t_unit**4*x_unit**3
 mu_0 = mu_0_SI*t_unit**2/x_unit
-
+c = (eps_0*mu_0)**(-1/2)
 
 # Pulsation for source and epsR
 ws = 1E10*2*np.pi*t_unit
@@ -47,30 +47,14 @@ def epsR_func(t):
     return epsR_0*(1+b*np.sin(wm*t))
 
 
-# Length of the dielectric stab
-v0 = (mu_0*eps_0*epsR_0)**(-1/2)
-
-# L = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
-L = 93E-3/x_unit
-
-print(f"{L = }")
-
-# Position of the dielectric
-shift = int(L/dx)
-k1 = int(xmax/(2*dx))-shift
-k2 = k1+shift
-
 # Source and its position
 ks = 10
-
-
 def source_func(t):
     return np.sin(ws*t)
 
 
 def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
-    c = (eps_0*mu_0)**(-1/2)
     dt = courant_number*dx/c
     t = np.arange(0, Tmax, dt)
     nt = len(t)
@@ -188,51 +172,25 @@ def w(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, ks, ws, ko):
     phi = np.arctan2(E1[:, ko], E2[:, ko])
     dt = t[1]-t[0]
     w_vec = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*dt)
+    w_vec = median_filter(w_vec, size=100)
 
     return (phi, w_vec, E1, E2)
 
 
-t, x, E, H = FDTD_1D(Tmax, courant_number, dx, xmax,
-                     epsR_func, k1, k2, source_func, ks)
+k1 = int(xmax/(2*dx))
+dt = courant_number*dx/c
+t = np.arange(0, Tmax, dt)
+v0 = (eps_0*epsR_0*mu_0)**(-1/2)
+L0 = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
+print(f"{L0 = }")
+for L in range(23, 201, 40):
+    shift = int(L/dx)
+    k2 = k1+shift
+    phi, w_vec, _, _ = w(Tmax, courant_number, dx, 2*xmax,
+                         epsR_func, k1, k2, ks, ws, k2+2)
+
+    plt.plot(t[2:-2], w_vec/(np.pi*2), label=f"L={L}")
 
 
-def sec2(t): return 1/np.cos(t)**2
-
-
-c1 = np.sqrt(4-b**2)
-c2 = (2*np.tan(wm*t/2)+b)/c1
-c3 = np.arctan(c2)-wm*L*c1/(4*v0)
-f1 = sec2(wm*t/2)/(1+c2**2)
-f2 = ws*(sec2(c3))/(1+(c1/2*np.tan(c3)-b/2)**2)
-f_ext_thick = f1*f2/(2*np.pi)
-
-# Compute the extant instantenious frequ
-
-f_ext_thin = 1/(np.pi*2)*ws*(1-b*L/(2*v0) *
-                             np.cos(wm*t)/(np.sqrt(1+b*np.sin(wm*t))))
-f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
-
-phi, w_vec, E1, E2 = w(Tmax, courant_number, dx, xmax,
-                       epsR_func, k1, k2, ks, ws, k2+2)
-
-plot_E(E, k2+2)
-anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-9, 1, 0)
-
-ana_signal = hilbert(E[:, k2+2])
-instanteneous_phase = np.unwrap(np.angle(ana_signal))
-f_hilbert = (1/(np.pi*2)*np.gradient(instanteneous_phase, t))
-
-dt = t[1]-t[0]
-i2 = int(2/dt)
-i9 = int(9/dt)
-f_liu = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
-# f_liu = w_vec[i2:i9]/(2*np.pi)
-plt.plot(t[i2:i9], f_hilbert[i2:i9],
-         label="$f_{Hilbert}$")
-plt.plot(t[i2:i9], f_ext[i2:i9], label="$f_{ext}$")
-plt.plot(t[i2:i9], f_liu, label="$f_{Liu}$")
-plt.xlabel("Time (ns)")
-plt.ylabel("Frequency (GHz)")
-plt.grid(ls="--")
 plt.legend()
 plt.show()

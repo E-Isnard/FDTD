@@ -1,7 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import animation
-
 """
 1D FDTD with time and space dependant electric permitivity
 
@@ -12,6 +8,11 @@ H_y and E_z only depend on x.
 We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 
 """
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import animation
+
+
 
 # Units
 t_unit = 1E-9  # ns

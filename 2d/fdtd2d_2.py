@@ -1,9 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from numba import njit
-import time
-
 """
 2D FDTD with time and space depandant electric permitivity
 
@@ -12,6 +6,14 @@ that H has components along x and y. They both depend only on x and y.
 
 We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 """
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from numba import njit
+import time
+
+
 @njit
 def func():
 

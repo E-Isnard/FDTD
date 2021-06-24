@@ -1,6 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
 """
 1D FDTD with constant eps and mu
 
@@ -11,6 +8,10 @@ H_y and E_z only depend on x.
 We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 
 """
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 # eps_0 = 8.85418782E-12 
 # mu_0 = 4*np.pi*1E-7
