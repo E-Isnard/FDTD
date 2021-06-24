@@ -29,7 +29,7 @@ mu_0 = mu_0_SI
 c = (eps_0*mu_0)**(-1/2)
 dt = courant_number*dxy/c
 print(f"{dt = }")
-Tmax = 100*dt
+Tmax = 150*dt
 x = np.arange(0, xymax, dxy)
 y = np.arange(0, xymax, dxy)
 t = np.arange(0, Tmax, dt)
@@ -53,7 +53,7 @@ t0 = 20
 spread = 6
 k_abc = (courant_number-1)/(courant_number+1)
 for i in range(nt-1):
-    source = np.sin(2*np.pi*t[i]*1e9)
+    # source = np.sin(2*np.pi*t[i]*1e9)
     source = np.exp(-0.5 * ((t0 - i) / spread) ** 2)
     Ez[i+1, 1:, 1:] = Ez[i, 1:, 1:]+courant_number * \
         (Hy[i, 1:, 1:]-Hy[i, :-1, 1:]-Hx[i, 1:, 1:]+Hx[i, 1:, :-1])

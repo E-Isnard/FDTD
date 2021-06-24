@@ -20,7 +20,7 @@ Tmax = 30
 dx=2.5E-3
 x = np.arange(0,L,dx)
 nx = len(x)
-epsR=1
+epsR=3
 eps=10
 
 mu = 10
@@ -44,9 +44,9 @@ print(f"tau={np.round(tau,2)}")
 H = np.zeros((nt,nx))
 E = np.zeros((nt,nx))
 #Position of the dielectric
-i1 = int(nx/2)
-i2 = int(nx/2)+40
-kSource = int(nx/2)
+i1 = int(nx/2)-40
+i2 = i1+20
+kSource = 10
 source = 1*np.exp(-(t-5)**2)
 source = np.sin(2*np.pi*t)
 b = 0.5*np.ones((nx,))
