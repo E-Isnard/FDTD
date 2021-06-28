@@ -20,11 +20,11 @@ from scipy.ndimage import median_filter
 t_unit = 1E-9  # ns
 x_unit = 1E-3  # mm
 
-xmax = 300E-3/x_unit
+xmax = 600E-3/x_unit
 Tmax = 10E-9/t_unit
-dx = 1.5E-3/x_unit
+dx = 1E-3/x_unit
 # courant_number = c*dt/dx
-courant_number = 1/2
+courant_number = 0.95
 
 # EM constants
 eps_0_SI = 8.85418782E-12
@@ -74,12 +74,13 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
     dt = courant_number*dx/c
     t = np.arange(0, Tmax, dt)
     nt = len(t)
-
+    #print(f"{nt = }")
     source = source_func(t)
     epsR = epsR_func(t)
 
     x = np.arange(0, xmax, dx)
     nx = len(x)
+    #print(f"{nx = }")
 
     H = np.zeros((nt, nx))
     E = np.zeros((nt, nx))

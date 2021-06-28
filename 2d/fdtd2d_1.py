@@ -21,6 +21,24 @@ def progress(i, n):
         f'\rProgression:[{k*"#"}{(20-k)*" "}] [{round((i)/(n)*100,2)} %]', end='' if i != n else "\n", flush=True)
 
 
+def abc_order_1(i,Ez):
+    Ez[i+1, 0, :] = Ez[i, 1, :]+k_abc*(Ez[i+1, 1, :]-Ez[i, 0, :])
+    Ez[i+1, -1, :] = Ez[i, -2, :]+k_abc*(Ez[i+1, -2, :]-Ez[i, -1, :])
+    Ez[i+1, :, 0] = Ez[i, :, 1]+k_abc*(Ez[i+1, :, 1]-Ez[i, :, 0])
+    Ez[i+1, :, -1] = Ez[i, :, -2]+k_abc*(Ez[i+1, :, -2]-Ez[i, :, -1])
+
+def abc_order_2(i,Ez):
+    Ez[i+1, 0, 1:-1] = -Ez[i-1, 1, 1:-1]+k_abc*(Ez[i+1, 1, 1:-1]-Ez[i-1, 0, 1:-1])+k2_abc*(Ez[i,1,1:-1]-Ez[i,0,1:-1])+k3_abc*(Ez[i,1,2:]-2*Ez[i,1,1:-1]+Ez[i,1,:-2]+Ez[i,0,2:]-2*Ez[i,0,1:-1]+Ez[i,0,:-2])
+    Ez[i+1, -1, 1:-1] = -Ez[i-1, -2, 1:-1]+k_abc*(Ez[i+1, -2, 1:-1]-Ez[i-1, -1, 1:-1])+k2_abc*(Ez[i,-2,1:-1]-Ez[i,-1,1:-1])+k3_abc*(Ez[i,-2,2:]-2*Ez[i,-2,1:-1]+Ez[i,-2,:-2]+Ez[i,-1,2:]-2*Ez[i,-1,1:-1]+Ez[i,-1,:-2])
+    Ez[i+1, 1:-1, 0] = -Ez[i-1, 1:-1, 1]+k_abc*(Ez[i+1, 1:-1, 1]-Ez[i-1, 1:-1, 0])+k2_abc*(Ez[i,1:-1,1]-Ez[i,1:-1,0])+k3_abc*(Ez[i,2:,1]-2*Ez[i,1:-1,1]+Ez[i,:-2,1]+Ez[i,2:,0]-2*Ez[i,1:-1,0]+Ez[i,:-2,0])
+    Ez[i+1, 1:-1, -1] = -Ez[i-1, 1:-1, -2]+k_abc*(Ez[i+1, 1:-1, -2]-Ez[i-1, 1:-1, -1])+k2_abc*(Ez[i,1:-1,-2]-Ez[i,1:-1,-1])+k3_abc*(Ez[i,2:,-2]-2*Ez[i,1:-1,-2]+Ez[i,:-2,-2]+Ez[i,2:,-1]-2*Ez[i,1:-1,-1]+Ez[i,:-2,-1])
+
+def abc_order_2_wH(i,Ez,Hx,Hy):
+    Ez[i+1, 0, 1:] = Ez[i, 1, 1:]+k_abc*(Ez[i+1, 1, 1:]-Ez[i, 0, 1:])+k4_abc*(Hx[i+1,0,1:]-Hx[i+1,0,:-1]+Hx[i+1,1,1:]-Hx[i+1,1,:-1])
+    Ez[i+1, -1, 1:] = Ez[i, -2, 1:]+k_abc*(Ez[i+1, -2, 1:]-Ez[i, -1, 1:])+k4_abc*(Hx[i+1,-1,1:]-Hx[i+1,-1,:-1]+Hx[i+1,-2,1:]-Hx[i+1,-2,:-1])
+    Ez[i+1, 1:, 0] = Ez[i, 1:, 1]+k_abc*(Ez[i+1, 1:, 1]-Ez[i, 1:, 0])+k4_abc*(Hy[i+1,1:,0]-Hy[i+1,:-1,0]+Hy[i+1,1:,1]-Hy[i+1,:-1,1])
+    Ez[i+1, 1:, -1] = Ez[i, 1:, -2]+k_abc*(Ez[i+1, 1:, -2]-Ez[i, 1:, -1])+k4_abc*(Hy[i+1,1:,-1]-Hy[i+1,:-1,-1]+Hy[i+1,1:,-2]-Hy[i+1,:-1,-2])
+
 # Units
 t_unit = 1E-9  # ns
 xy_unit = 1E-3  # mm
@@ -36,7 +54,7 @@ c = (eps_0*mu_0)**(-1/2)
 dxy = 0.05
 xymax = 100*dxy
 # courant_number = c*dt/dx
-courant_number = 1/np.sqrt(2)
+courant_number = 0.95/np.sqrt(2)
 
 dt = courant_number*dxy/c
 Tmax = 200*dt
@@ -59,33 +77,30 @@ mid = int(nxy/2)
 t0 = 20
 spread = 6
 k_abc = (courant_number-1)/(courant_number+1)
+k2_abc = 2/(courant_number+1)
+k3_abc = courant_number**2/(2*(courant_number+1))
+k4_abc = -1/(2*dxy*(courant_number+1))
 s = perf_counter()
 for i in range(nt-1):
-    #source = np.sin(2*np.pi*t[i]*1e8)
+    # source = np.sin(2*np.pi*t[i]*1e8*4)*courant_number
     source = np.exp(-0.5 * ((t0 - i) / spread) ** 2)
 
-    Ez[i+1, 1:, 1:] = Ez[i, 1:, 1:]+courant_number * \
-        (Hy[i, 1:, 1:]-Hy[i, :-1, 1:]-Hx[i, 1:, 1:]+Hx[i, 1:, :-1])
+    Hx[i+1,:,1:] = Hx[i,:,1:] - courant_number*(Ez[i,:,1:]-Ez[i,:,:-1])
+    Hy[i+1,1:,:] = Hy[i,1:,:] + courant_number*(Ez[i,1:,:]-Ez[i,:-1,:])
+    Ez[i+1,:-1,:-1] = Ez[i,:-1,:-1]+courant_number*(Hy[i+1,1:,:-1]-Hy[i+1,:-1,:-1]-Hx[i+1,:-1,1:]+Hx[i+1,:-1,:-1])
 
-    Ez[i+1, 0, :] = Ez[i, 1, :]+k_abc*(Ez[i+1, 1, :]-Ez[i, 0, :])
-    Ez[i+1, -1, :] = Ez[i, -2, :]+k_abc*(Ez[i+1, -2, :]-Ez[i, -1, :])
-    Ez[i+1, :, 0] = Ez[i, :, 1]+k_abc*(Ez[i+1, :, 1]-Ez[i, :, 0])
-    Ez[i+1, :, -1] = Ez[i, :, -2]+k_abc*(Ez[i+1, :, -2]-Ez[i, :, -1])
+    if i>0:
+        abc_order_2_wH(i,Ez,Hx,Hy)
 
-    Hx[i+1, :-1, :-1] = Hx[i, :-1, :-1]+courant_number * \
-        (Ez[i+1, :-1, :-1]-Ez[i+1, :-1, 1:])
-    Hy[i+1, :-1, :-1] = Hy[i, :-1, :-1]+courant_number * \
-        (Ez[i+1, 1:, :-1]-Ez[i+1, :-1, :-1])
-
-    Ez[i+1, mid, mid] += source
+    Ez[i+1, 20, mid] += source
     # Ez[i+1, mid, mid+10] += source
 
     progress(i, nt-1)
 
 
-print(f"Calculations took {round(perf_counter()-s,2)} s")
+print(f"Calculations took {(perf_counter()-s):.2f} s")
 print(
-    f"Memory taken by Hx,Hy and Ez: {round((Hx.nbytes+Hy.nbytes+Ez.nbytes)/(1024**2),2)} MB")
+    f"Memory taken by Hx,Hy and Ez: {((Hx.nbytes+Hy.nbytes+Ez.nbytes)/(1024**2)):.2f} MB")
 
 
 def anim3d():
@@ -113,29 +128,32 @@ def anim3d():
     a = animation.FuncAnimation(
         fig, anim, interval=1000/60, frames=int((nt-1)*0.75), blit=False, repeat=False)
     print("anim3d:")
-    a.save("animation3d.gif", fps=60, progress_callback=progress)
+    # a.save("animation3d.gif", fps=60, progress_callback=progress)
     plt.show()
 
 
 def animContour():
-
+    cmap = "viridis"
     fig = plt.figure(figsize=(30, 30))
     ax = plt.axes()
-    plt_tmp = ax.contourf(X, Y, Ez[10], vmin=0, vmax=0.1, levels=100)
+    plt_tmp = ax.contourf(X, Y, Ez[10], vmin=-0.2,
+                          vmax=0.2, levels=100, cmap=cmap)
     plt.colorbar(plt_tmp)
-    ax.contourf(X, Y, Ez[0], vmin=0, vmax=0.1, levels=100)
+    ax.contourf(X, Y, Ez[0], vmin=-0.2, vmax=0.2, levels=100, cmap=cmap)
 
     def anim2(i):
         ax.clear()
-        plot = ax.contourf(X, Y, Ez[i], vmin=0, vmax=0.1, levels=100)
+        plot = ax.contourf(X, Y, Ez[i], vmin=-0.2,
+                           vmax=0.2, levels=100, cmap=cmap)
         return plot,
 
     a2 = animation.FuncAnimation(
         fig, anim2, interval=1000/60, frames=int((nt-1)*1), blit=False, repeat=False)
     print("contour:")
-    a2.save("contour.gif", fps=60, progress_callback=progress)
+    # a2.save("contour.gif", fps=60, progress_callback=progress)
     plt.show()
 
 
-anim3d()
+# anim3d()
 animContour()
+print(Ez[-1, 0,:])

@@ -20,11 +20,11 @@ from scipy.ndimage import median_filter
 t_unit = 1E-9  # ns
 x_unit = 1E-3  # mm
 
-xmax = 300E-3/x_unit
+xmax = 600E-3/x_unit
 Tmax = 10E-9/t_unit
-dx = 1.5E-3/x_unit
+dx = 1E-3/x_unit
 # courant_number = c*dt/dx
-courant_number = 1/2
+courant_number = 0.95
 
 # EM constants
 eps_0_SI = 8.85418782E-12
@@ -171,10 +171,10 @@ def w(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, ks, ws, ko):
                           epsR_func, k1, k2, source2_func, ks)
     phi = np.arctan2(E1[:, ko], E2[:, ko])
     dt = t[1]-t[0]
-    w_vec = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*dt)
-    w_vec = median_filter(w_vec, size=100)
+    w_vec2 = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*dt)
+    w_vec = median_filter(w_vec2, size=100)
 
-    return (phi, w_vec, E1, E2)
+    return (w_vec2, w_vec, E1, E2)
 
 
 k1 = int(xmax/(2*dx))
@@ -183,14 +183,31 @@ t = np.arange(0, Tmax, dt)
 v0 = (eps_0*epsR_0*mu_0)**(-1/2)
 L0 = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
 print(f"{L0 = }")
-for L in range(23, 201, 40):
+for L in np.arange(0,180,20):
     shift = int(L/dx)
     k2 = k1+shift
-    phi, w_vec, _, _ = w(Tmax, courant_number, dx, 2*xmax,
+    _, w_vec, _, _ = w(Tmax, courant_number, dx, 2*xmax,
                          epsR_func, k1, k2, ks, ws, k2+2)
 
     plt.plot(t[2:-2], w_vec/(np.pi*2), label=f"L={L}")
 
 
+shift = int(L0/dx)
+k2 = k1+shift
+_,w_vec,_,_ = w(Tmax,courant_number,dx,2*xmax,epsR_func,k1,k2,ks,ws,k2+2)
+plt.plot(t[2:-2],w_vec/(np.pi*2),label=f"$L_0$={L0:.2f}")
+
+
+
+sec2 = lambda t: (np.cos(t))**(-2)
+
+c1 = np.sqrt(4-b**2)
+c2 = (2*np.tan(wm*t/2)+b)/c1
+c3 = np.arctan(c2)-wm*L0*c1/(4*v0)
+f1 = sec2(wm*t/2)/(1+c2**2)
+f2 = ws*(sec2(c3))/(1+(c1/2*np.tan(c3)-b/2)**2)
+f_ext_thick = f1*f2/(2*np.pi)
+
+plt.plot(t[2:-2],f_ext_thick[2:-2],label = f"$L_0$={L0:.2f} with exact formula")
 plt.legend()
 plt.show()
