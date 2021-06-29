@@ -44,6 +44,12 @@ def silver_muller(i,Ez,Hx,Hy):
     Ez[i+1,-1,:] = -Hy[i+1,-1,:]
     Ez[i+1,:,0] = -Hx[i+1,:,0]
     Ez[i+1,:,-1] = Hy[i+1,:,-1]
+
+def pec(i,Ez):
+    Ez[i+1,0,:] = 0
+    Ez[i+1,-1,:] = 0
+    Ez[i+1,:,-1] = 0
+    Ez[i+1,:,0] = 0
 # Units
 t_unit = 1E-9  # ns
 xy_unit = 1E-3  # mm
@@ -56,8 +62,8 @@ mu_0 = mu_0_SI
 c = (eps_0*mu_0)**(-1/2)
 
 
-dxy = 0.05
-xymax = 100*dxy
+dxy = 0.01
+xymax = 1
 # courant_number = c*dt/dx
 courant_number = 0.95/np.sqrt(2)
 
@@ -78,6 +84,9 @@ if Hx.nbytes / 1024**3 > 1:
     raise MemoryError("Too much memory")
 
 X, Y = np.meshgrid(x, y)
+T,X2,Y2 = np.meshgrid(t,x,y)
+print(T.shape)
+ana_sol = (np.cos(np.sqrt(2*np.pi)*T)+np.sin(np.sqrt(2*np.pi)*T))*np.sin(np.pi*X2)*np.sin(np.pi*Y2)
 mid = int(nxy/2)
 t0 = 20
 spread = 6
@@ -86,17 +95,19 @@ k2_abc = 2/(courant_number+1)
 k3_abc = courant_number**2/(2*(courant_number+1))
 k4_abc = -1/(2*dxy*(courant_number+1))
 s = perf_counter()
+Ez[0] = np.sin(np.pi*X)*np.sin(np.pi*Y)
 for i in range(nt-1):
     # source = np.sin(2*np.pi*t[i]*1e8*4)*courant_number
-    source = np.exp(-0.5 * ((t0 - i) / spread) ** 2)
+    # source = np.exp(-0.5 * ((t0 - i) / spread) ** 2)
 
     Hx[i+1,:,1:] = Hx[i,:,1:] - courant_number*(Ez[i,:,1:]-Ez[i,:,:-1])
     Hy[i+1,1:,:] = Hy[i,1:,:] + courant_number*(Ez[i,1:,:]-Ez[i,:-1,:])
     Ez[i+1,:-1,:-1] = Ez[i,:-1,:-1]+courant_number*(Hy[i+1,1:,:-1]-Hy[i+1,:-1,:-1]-Hx[i+1,:-1,1:]+Hx[i+1,:-1,:-1])
 
-    abc_order_1(i,Ez)
+    # abc_order_2(i,Ez)
+    pec(i,Ez)
 
-    Ez[i+1, mid, mid] += source
+    # Ez[i+1, mid, mid] += source
     # Ez[i+1, mid, mid+10] += source
 
     progress(i, nt-1)
@@ -122,7 +133,7 @@ def anim3d():
 
     def anim(i):
         ax.clear()
-        ax.set_zlim(-0.05, 0.05)
+        ax.set_zlim(-1, 1)
         plot = ax.plot_surface(X, Y, Ez[i])
         # ax.plot(*set1, lw=2, zorder=20, c="C1")
         # fill_between_3d(ax, *set01, *set1, mode = 1, c="C1")
@@ -137,8 +148,8 @@ def anim3d():
 
 
 def animContour():
-    vmin = 0
-    vmax = 0.05
+    vmin = None
+    vmax = None
     cmap = "viridis"
     fig = plt.figure(figsize=(30, 30))
     ax = plt.axes()
@@ -162,4 +173,4 @@ def animContour():
 
 # anim3d()
 animContour()
-print(Ez[-1, mid,:])
+print(Ez[-1]-ana_sol[-1])

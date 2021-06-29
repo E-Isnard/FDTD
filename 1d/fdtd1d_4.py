@@ -14,7 +14,7 @@ from matplotlib import animation
 
 xmax = np.pi
 Tmax = 10
-dx = 0.01
+dx = 0.005
 # courant_number = c*dt/dx
 courant_number = 1/2
 
@@ -28,7 +28,7 @@ def epsR_func1(t):
 
 
 def J_func1(T, X):
-    return 0*T*X
+    return np.zeros(T.shape)
 
 
 def H0_func1(x):
@@ -167,6 +167,8 @@ dt = t[1]-t[0]
 n5 = int(5/dt)
 err = np.linalg.norm(E[n5, :]-E_ext[n5, :])
 err2 = np.linalg.norm(H[n5, :]-H_ext[n5, :])
+rel_err = err/np.linalg.norm(E_ext[n5,:])
+rel_err2 = err2/np.linalg.norm(H_ext[n5,:])
 plt.plot(x, E[n5, :], label="E")
 plt.plot(x, E_ext[n5, :], label="E_ext")
 plt.legend()
@@ -176,8 +178,10 @@ plt.plot(x, H[n5, :])
 plt.plot(x, H_ext[n5, :])
 plt.show()
 print("Errors for 1st case (L2 norm):")
-print(f"err  = {err:e}")
-print(f"err2 = {err2:e}\n")
+print(f"err E = {err:e}")
+print(f"err H = {err2:e}")
+print(f"rel_err E = {rel_err*100:.2f} %")
+print(f"rel_err H = {rel_err2*100:.2f} %\n")
 
 
 E_ext2 = np.cos(T)*np.sin(X)
@@ -186,6 +190,8 @@ H_ext2 = np.sin(T)*np.cos(X)
 
 err = np.linalg.norm(E2[n5, :]-E_ext2[n5, :])
 err2 = np.linalg.norm(H2[n5, :]-H_ext2[n5, :])
+rel_err = err/np.linalg.norm(E_ext2[n5,:])
+rel_err2 = err2/np.linalg.norm(H_ext2[n5,:])
 plt.plot(x, E2[n5, :], label="E")
 plt.plot(x, E_ext2[n5, :], label="E_ext")
 plt.legend()
@@ -195,5 +201,7 @@ plt.plot(x, H2[n5, :])
 plt.plot(x, H_ext2[n5, :])
 plt.show()
 print("Errors for 2nd case (L2 norm):")
-print(f"err  = {err:e}")
-print(f"err2 = {err2:e}")
+print(f"err E = {err:e}")
+print(f"err H = {err2:e}")
+print(f"rel_err E = {rel_err*100:.2f} %")
+print(f"rel_err H = {rel_err2*100:.2f} %")
