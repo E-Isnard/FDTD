@@ -60,16 +60,18 @@ E[0,kSource]=source[0]
 for i in range(nt-1):
 
     H[i+1,1:] = H[i,1:]+1/2*(E[i,1:]-E[i,:-1])
+    H[i+1,0] = E[i,0]
     E[i+1,:-1] = E[i,:-1]+b[:-1]*(H[i+1,1:]-H[i+1,:-1])
+    E[i+1,-1] = -H[i+1,-1]
     #ABC 2 (from "Electromagnetism simulation using the fdtd method with python" textbook)
     # E[i+1,0]= E[i-1,1]
     # E[i+1,-1] = E[i-1,2]
 
     #ABC 2 (from Liu phd thesis)
-    E[i+1,0] = E[i,1]-1/3*(E[i+1,1]-E[i,0])
-    E[i+1,-1] = E[i,-2]-1/3*(E[i+1,-2]-E[i,-1])
-    H[i+1,0] = H[i,1]-1/3*(H[i+1,1]-H[i,0])
-    H[i+1,-1] = H[i,-2]-1/3*(H[i+1,-2]-H[i,-1])
+    # E[i+1,0] = E[i,1]-1/3*(E[i+1,1]-E[i,0])
+    # E[i+1,-1] = E[i,-2]-1/3*(E[i+1,-2]-E[i,-1])
+    # H[i+1,0] = H[i,1]-1/3*(H[i+1,1]-H[i,0])
+    # H[i+1,-1] = H[i,-2]-1/3*(H[i+1,-2]-H[i,-1])
 
     #Hard source
     E[i+1,kSource] = source[i+1]

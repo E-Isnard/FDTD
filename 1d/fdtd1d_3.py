@@ -101,12 +101,14 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
         # Update equations
         H[i+1, 1:] = H[i, 1:]+courant_number*(E[i, 1:]-E[i, :-1])
+        H[i+1,0] = E[i,0]
         E[i+1, :-1] = ca[:-1]*E[i, :-1]+cb[:-1]*(H[i+1, 1:]-H[i+1, :-1])
+        E[i+1,-1] = -H[i+1,-1]
 
         # ABC (from Liu phd thesis)
 
-        E[i+1, 0] = E[i, 1]+k_abc*(E[i+1, 1]-E[i, 0])
-        E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
+        # E[i+1, 0] = E[i, 1]+k_abc*(E[i+1, 1]-E[i, 0])
+        # E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
 
         # Soft source
         E[i+1, ks] += source[i+1]

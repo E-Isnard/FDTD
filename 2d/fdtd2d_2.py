@@ -4,89 +4,160 @@
 We use TMz, which means that E has only one component along z and 
 that H has components along x and y. They both depend only on x and y.
 
-We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
+We use a normalized version of E: Ẽ_z = √(ɛ0/µ0)*E
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from numba import njit
-import time
+from time import perf_counter
+from fillbetween3d import fill_between_3d
 
 
-@njit
-def func():
+def progress(i, n):
+    i += 1
+    k = int(i/n*20)
+    print(
+        f'\rProgression:[{k*"#"}{(20-k)*" "}] [{round((i)/(n)*100,2)} %]', end='' if i != n else "\n", flush=True)
 
-    # Units
-    t_unit = 1E-9  # ns
-    xy_unit = 1E-3  # mm
 
-    dxy = 0.01
-    xymax = 150*dxy
-    # courant_number = c*dt/dx
-    courant_number = 1/2
+def abc_order_1(i,Ez):
+    Ez[i+1, 0, :] = Ez[i, 1, :]+k_abc*(Ez[i+1, 1, :]-Ez[i, 0, :])
+    Ez[i+1, -1, :] = Ez[i, -2, :]+k_abc*(Ez[i+1, -2, :]-Ez[i, -1, :])
+    Ez[i+1, :, 0] = Ez[i, :, 1]+k_abc*(Ez[i+1, :, 1]-Ez[i, :, 0])
+    Ez[i+1, :, -1] = Ez[i, :, -2]+k_abc*(Ez[i+1, :, -2]-Ez[i, :, -1])
 
-    # EM constants
-    eps_0_SI = 8.85418782E-12
-    mu_0_SI = 4*np.pi*1E-7
-    eps_0 = eps_0_SI
-    mu_0 = mu_0_SI
-    c = (eps_0*mu_0)**(-1/2)
-    dt = courant_number*dxy/c
-    print(dt)
-    Tmax = 200*dt
+def abc_order_2(i,Ez):
+    Ez[i+1, 0, 1:-1] = -Ez[i-1, 1, 1:-1]+k_abc*(Ez[i+1, 1, 1:-1]-Ez[i-1, 0, 1:-1])+k2_abc*(Ez[i,1,1:-1]-Ez[i,0,1:-1])+k3_abc*(Ez[i,1,2:]-2*Ez[i,1,1:-1]+Ez[i,1,:-2]+Ez[i,0,2:]-2*Ez[i,0,1:-1]+Ez[i,0,:-2])
+    Ez[i+1, -1, 1:-1] = -Ez[i-1, -2, 1:-1]+k_abc*(Ez[i+1, -2, 1:-1]-Ez[i-1, -1, 1:-1])+k2_abc*(Ez[i,-2,1:-1]-Ez[i,-1,1:-1])+k3_abc*(Ez[i,-2,2:]-2*Ez[i,-2,1:-1]+Ez[i,-2,:-2]+Ez[i,-1,2:]-2*Ez[i,-1,1:-1]+Ez[i,-1,:-2])
+    Ez[i+1, 1:-1, 0] = -Ez[i-1, 1:-1, 1]+k_abc*(Ez[i+1, 1:-1, 1]-Ez[i-1, 1:-1, 0])+k2_abc*(Ez[i,1:-1,1]-Ez[i,1:-1,0])+k3_abc*(Ez[i,2:,1]-2*Ez[i,1:-1,1]+Ez[i,:-2,1]+Ez[i,2:,0]-2*Ez[i,1:-1,0]+Ez[i,:-2,0])
+    Ez[i+1, 1:-1, -1] = -Ez[i-1, 1:-1, -2]+k_abc*(Ez[i+1, 1:-1, -2]-Ez[i-1, 1:-1, -1])+k2_abc*(Ez[i,1:-1,-2]-Ez[i,1:-1,-1])+k3_abc*(Ez[i,2:,-2]-2*Ez[i,1:-1,-2]+Ez[i,:-2,-2]+Ez[i,2:,-1]-2*Ez[i,1:-1,-1]+Ez[i,:-2,-1])
 
-    x = np.arange(0, xymax, dxy)
-    y = np.arange(0, xymax, dxy)
-    t = np.arange(0, Tmax, dt)
+def abc_order_2_wH(i,Ez,Hx,Hy):
+    Ez[i+1, 0, 1:] = Ez[i, 1, 1:]+k_abc*(Ez[i+1, 1, 1:]-Ez[i, 0, 1:])+k4_abc*(Hx[i+1,0,1:]-Hx[i+1,0,:-1]+Hx[i+1,1,1:]-Hx[i+1,1,:-1])
+    Ez[i+1, -1, 1:] = Ez[i, -2, 1:]+k_abc*(Ez[i+1, -2, 1:]-Ez[i, -1, 1:])+k4_abc*(Hx[i+1,-1,1:]-Hx[i+1,-1,:-1]+Hx[i+1,-2,1:]-Hx[i+1,-2,:-1])
+    Ez[i+1, 1:, 0] = Ez[i, 1:, 1]+k_abc*(Ez[i+1, 1:, 1]-Ez[i, 1:, 0])+k4_abc*(Hy[i+1,1:,0]-Hy[i+1,:-1,0]+Hy[i+1,1:,1]-Hy[i+1,:-1,1])
+    Ez[i+1, 1:, -1] = Ez[i, 1:, -2]+k_abc*(Ez[i+1, 1:, -2]-Ez[i, 1:, -1])+k4_abc*(Hy[i+1,1:,-1]-Hy[i+1,:-1,-1]+Hy[i+1,1:,-2]-Hy[i+1,:-1,-2])
 
-    nxy = len(x)
-    nt = len(t)
+def pec(i,Ez):
+    Ez[i+1,0,:] = 0
+    Ez[i+1,-1,:] = 0
+    Ez[i+1,:,-1] = 0
+    Ez[i+1,:,0] = 0
+# Units
+t_unit = 1E-9  # ns
+xy_unit = 1E-3  # mm
 
-    Hx = np.zeros((nt, nxy, nxy))
-    Hy = np.zeros((nt, nxy, nxy))
-    Ez = np.zeros((nt, nxy, nxy))
-    spread = 6
-    t0 = 20
-    mid = int(nxy/2)
+# EM constants
+eps_0_SI = 8.85418782E-12
+mu_0_SI = 4*np.pi*1E-7
+eps_0 = eps_0_SI
+mu_0 = mu_0_SI
+c = (eps_0*mu_0)**(-1/2)
 
-    for i in range(nt-1):
-        pulse = np.exp(-0.5 * ((t0 - i) / spread) ** 2)
-        for j in range(1, nxy):
-            for k in range(1, nxy):
-                Ez[i+1, j, k] = Ez[i, j, k]+courant_number * \
-                    (Hy[i, j, k]-Hy[i, j-1, k]-Hx[i, j, k]+Hx[i, j, k-1])
+dxy = 0.01
+xymax = 1
+# courant_number = c*dt/dx
+courant_number = 0.95/np.sqrt(2)
 
-        for j in range(nxy-1):
-            for k in range(nxy-1):
-                Hx[i+1, j, k] = Hx[i, j, k]+courant_number * \
-                    (Ez[i+1, j, k]-Ez[i+1, j, k+1])
-                Hy[i+1, j, k] = Hy[i, j, k]+courant_number * \
-                    (Ez[i+1, j+1, k]-Ez[i+1, j, k])
-        Ez[i+1, mid, mid] = pulse
-        
-    return (t,x,y,Ez,Hx,Hy)
-    # print(
-    #     f'\rProgression:[{k*"#"}{(20-k)*" "}] [{i+1}/{nt-1}]', end='', flush=True)
-t,x,y,Ez,Hx,Hy = func()
+dt = courant_number*dxy/c
+Tmax = 200*dt
+x = np.arange(0, xymax, dxy)
+y = np.arange(0, xymax, dxy)
+t = np.arange(0, Tmax, dt)
+
+nxy = len(x)
 nt = len(t)
-X, Y = np.meshgrid(x, y)
-fig = plt.figure(figsize=(30, 30))
-ax = plt.axes(projection="3d")
 
-ax.set_xlim(0, 100)
-ax.set_ylim(0, 100)
-ax.set_zlim(-10, 10)
+Hx = np.zeros((nt, nxy, nxy))
+Hy = np.zeros((nt, nxy, nxy))
+Ez = np.zeros((nt, nxy, nxy))
+
+if Hx.nbytes / 1024**3 > 1:
+    raise MemoryError("Too much memory")
+
+X, Y = np.meshgrid(x, y,indexing="ij")
+T,X2,Y2 = np.meshgrid(t,x,y,indexing="ij")
+ana_sol = (np.cos(np.sqrt(2)*T*c*np.pi))*np.sin(np.pi*X2)*np.sin(np.pi*Y2)
+del T,X2,Y2
+mid = int(nxy/2)
+t0 = 20
+spread = 6
+k_abc = (courant_number-1)/(courant_number+1)
+k2_abc = 2/(courant_number+1)
+k3_abc = courant_number**2/(2*(courant_number+1))
+k4_abc = -1/(2*dxy*(courant_number+1))
+s = perf_counter()
+Ez[0] = np.sin(np.pi*X)*np.sin(np.pi*Y)
+for i in range(nt-1):
+
+    Hx[i+1,:,1:] = Hx[i,:,1:] - courant_number*(Ez[i,:,1:]-Ez[i,:,:-1])
+    Hy[i+1,1:,:] = Hy[i,1:,:] + courant_number*(Ez[i,1:,:]-Ez[i,:-1,:])
+    Ez[i+1,:-1,:-1] = Ez[i,:-1,:-1]+courant_number*(Hy[i+1,1:,:-1]-Hy[i+1,:-1,:-1]-Hx[i+1,:-1,1:]+Hx[i+1,:-1,:-1])
+
+    pec(i,Ez)
+
+    progress(i, nt-1)
 
 
-def anim(i):
-    ax.clear()
-    plot = ax.plot_surface(X, Y, Ez[i])
-    ax.set_zlim(-0.1, 0.1)
-    return plot,
+print(f"Calculations took {(perf_counter()-s):.2f} s")
+print(
+    f"Memory taken by Hx,Hy and Ez: {((Hx.nbytes+Hy.nbytes+Ez.nbytes)/(1024**2)):.2f} MB")
 
-time.sleep(2)
-a = animation.FuncAnimation(
-    fig, anim, interval=1000/60, frames=nt-1, blit=False, repeat=False)
-# a.save("oui.gif")
-plt.show()
+
+def anim3d(X,Y,Ez):
+
+    fig = plt.figure(figsize=(30, 30))
+    ax = plt.axes(projection="3d", xlabel="X", ylabel="Y", zlabel="Z")
+
+    # x2 = x[:int(nxy/2)]
+
+    # # Sets of [x, y, 0] lines (with constant y) for defining the bases of the polygons.
+    # set01 = [x2, 2.5*np.ones(len(x2)), -0.2*np.ones(len(x2))]
+
+    # # Sets of the form [x, y, fi] (with constant y) representing each function 3D line.
+    # set1  = [x2, 2.5*np.ones(len(x2)), 0.2*np.ones(len(x2))]
+
+    def anim(i):
+        ax.clear()
+        ax.set_zlim(-1, 1)
+        plot = ax.plot_surface(X, Y, Ez[i])
+        # ax.plot(*set1, lw=2, zorder=20, c="C1")
+        # fill_between_3d(ax, *set01, *set1, mode = 1, c="C1")
+        # plt.title(i)
+        return plot,
+
+    a = animation.FuncAnimation(
+        fig, anim, interval=1000/60, frames=int((nt-1)*0.75), blit=False, repeat=False)
+    print("anim3d:")
+    # a.save("animation3d.gif", fps=60, progress_callback=progress)
+    plt.show()
+
+
+def animContour(X,Y,Ez):
+    vmin = None
+    vmax = None
+    cmap = "viridis"
+    fig = plt.figure(figsize=(30, 30))
+    ax = plt.axes()
+    plt_tmp = ax.contourf(X, Y, Ez[10], vmin=vmin,
+                          vmax=vmax, levels=100, cmap=cmap)
+    plt.colorbar(plt_tmp)
+    ax.contourf(X, Y, Ez[0], vmin=vmin, vmax=vmax, levels=100, cmap=cmap)
+
+    def anim2(i):
+        ax.clear()
+        plot = ax.contourf(X, Y, Ez[i], vmin=vmin,
+                           vmax=vmax, levels=100, cmap=cmap)
+        return plot,
+
+    a2 = animation.FuncAnimation(
+        fig, anim2, interval=1000/60, frames=int((nt-1)*1), blit=False, repeat=False)
+    print("contour:")
+    # a2.save("contour.gif", fps=60, progress_callback=progress)
+    plt.show()
+
+
+anim3d(X,Y,Ez)
+# animContour(X,Y,Ez)
+animContour(X,Y,ana_sol)
