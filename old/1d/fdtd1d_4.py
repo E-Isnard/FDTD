@@ -68,6 +68,7 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, E0_func, H0_func, J_func)
     nx = len(x)
     X, T = np.meshgrid(x, t)
     J = J_func(T, X)
+    # print(J)
     del X
     del T
 

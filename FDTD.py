@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from time import perf_counter
 from matplotlib import animation
+from scipy.signal.signaltools import hilbert
 
 
 def progress(i, n):
@@ -12,11 +13,11 @@ def progress(i, n):
 
 
 class FDTD:
-    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, cfl=None, boundary_condition="Mur"):
+    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func,E0_func = lambda x: 0,H0_func = lambda x:0,J_func = lambda T,X: np.zeros(T.shape),cfl=None, boundary_condition="Mur",eps_0=8.85418782e-12,mu_0=4*np.pi*1e-7):
         if d != 1 and d != 2:
             raise ValueError("Dimension should be 1 or 2.")
-        self.eps_0 = 8.85418782e-12
-        self.mu_0 = 4*np.pi*1e-7
+        self.eps_0 = eps_0
+        self.mu_0 = mu_0
         self.c = (self.eps_0*self.mu_0)**(-1/2)
         self.d = d
         self.L = L
@@ -26,16 +27,24 @@ class FDTD:
         self.dt = self.cfl*self.delta/self.c
         self.n_space = int(L/delta)+1
         self.nt = int(T_max/self.dt)+1
-        self.shape = (self.nt,)+d*(self.n_space,)
-        self.Hx = np.zeros(self.shape) if d != 1 else None
-        self.Hy = np.zeros(self.shape)
-        self.Ez = np.zeros(self.shape)
+        shape = (self.nt,)+d*(self.n_space,)
+        self.Hx = np.zeros(shape) if d != 1 else None
+        self.Hy = np.zeros(shape)
+        self.Ez = np.zeros(shape)
+        if d==1:
+            x = np.linspace(0,L,self.n_space)
+            t = np.linspace(0,T_max,self.nt)
+            X,T = np.meshgrid(x,t)
+            self.Hy[0] = H0_func(x)
+            self.Ez[0] = E0_func(x)
+            self.J = J_func(T,X)
         self.source_func = source_func
         self.source_pos = source_pos
         self.L_slab = L_slab
         self.slab_pos = slab_pos
         self.epsr_func = epsr_func
         self.boundary_condition = boundary_condition
+        
 
     def run(self, progress_bar=True, info=True):
         ca = np.ones(self.d*(self.n_space,))
@@ -56,12 +65,16 @@ class FDTD:
                 self.Hy[n+1, 1:] = self.Hy[n, 1:] + \
                     self.cfl*(self.Ez[n, 1:]-self.Ez[n, :-1])
                 self.Ez[n+1, :-1] = ca[:-1]*self.Ez[n, :-1] + \
-                    cb[:-1]*(self.Hy[n+1, 1:]-self.Hy[n+1, :-1])
-
-                self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
-                    (self.Ez[n+1, 1]-self.Ez[n, 0])
-                self.Ez[n+1, -1] = self.Ez[n, -2]+coeff_mur * \
-                    (self.Ez[n+1, -2]-self.Ez[n, -1])
+                    cb[:-1]*(self.Hy[n+1, 1:]-self.Hy[n+1, :-1]-self.J[n+1,:-1]*self.delta)
+                if self.boundary_condition=="Mur":
+                    self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
+                        (self.Ez[n+1, 1]-self.Ez[n, 0])
+                    self.Ez[n+1, -1] = self.Ez[n, -2]+coeff_mur * \
+                        (self.Ez[n+1, -2]-self.Ez[n, -1])
+                if self.boundary_condition=="PEC":
+                    self.Ez[n+1,0]=0
+                    self.Ez[n+1,-1]=0
+                    self.Hy[n+1,0]=self.Hy[n+1,1]
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
 
                 if progress_bar:
@@ -69,8 +82,8 @@ class FDTD:
             if info:
                 print(f"Calculations took {(perf_counter()-start):.2f} s")
         if self.d == 2:
-            ks1 = int(self.source_pos[0]/delta)
-            ks2 = int(self.source_pos[1]/delta)
+            ks1 = int(self.source_pos[0]/self.delta)
+            ks2 = int(self.source_pos[1]/self.delta)
             j1 = 0
             j2 = self.n_space-1
             if info:
@@ -109,7 +122,7 @@ class FDTD:
         k1 = int(self.slab_pos/self.delta)
         shift = int(self.L_slab/self.delta)
         k2 = k1+shift
-        x = np.arange(0, self.L, self.delta)
+        x = np.linspace(0, self.L, self.n_space)
         fig = plt.figure()
         line, line2 = plt.plot(x, np.array([self.Ez[0], self.Hy[0]]).T)
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
@@ -146,7 +159,7 @@ class FDTD:
         plt.plot(t, self.Ez[:, ko])
         plt.title(
             "Normalized Electric Field $\\tilde{E}_z(x_o,t)$")
-        plt.xlabel("time [ns]")
+        plt.xlabel("time [s]")
         plt.ylabel("$\\tilde{E}_z(x_o,t)$ [A/m]")
         plt.grid(ls="--")
         if save:
@@ -176,8 +189,8 @@ class FDTD:
     def animContour(self, vmin, vmax, interval=1e-3, cmap="jet", save=False):
         if self.d !=2:
             raise ValueError("This method should be used in 2d only")
-        x = np.linspace(0, L, self.n_space)
-        y = np.linspace(0, L, self.n_space)
+        x = np.linspace(0, self.L, self.n_space)
+        y = np.linspace(0, self.L, self.n_space)
         X, Y = np.meshgrid(x, y)
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
@@ -222,8 +235,8 @@ class FDTD:
     def animSurface(self,z_low,z_high,interval=1e-3,save=False):
         fig = plt.figure(figsize=(10,10))
         ax = plt.axes(projection="3d",xlabel="X",ylabel="Y")
-        x = np.linspace(0,L,self.n_space)
-        y = np.linspace(0,L,self.n_space)
+        x = np.linspace(0,self.L,self.n_space)
+        y = np.linspace(0,self.L,self.n_space)
         X,Y = np.meshgrid(x,y)
         def anim(i):
             ax.clear()
@@ -235,23 +248,10 @@ class FDTD:
             print("Surface Animation:")
             a.save("SurfaceAnimation.mp4",fps=60,progress_callback=progress)
         plt.show()
-if __name__ == "__main__":
-    L = 300e-3
-    delta = 1.5e-3
-    T_max = 6e-9
-    d = 2
-    ws = 2*np.pi*1e10
-    def source_func(t): return np.sin(ws*t)
-    source_pos = (L/2, delta)
-    L_slab = 3e-3
-    slab_pos = L/2-L_slab
-    wm = 2*np.pi*1e9
-    b = 0.67
-    epsr_0 = 3
-    def epsr_func(t): return epsr_0*(1+b*np.sin(wm*t))
 
-    fdtd = FDTD(L, delta, T_max, d, source_func,
-                source_pos, L_slab, slab_pos, epsr_func)
-    fdtd.run(progress_bar=False)
-    fdtd.animSurface(-0.1,0.1)
-    fdtd.plotE2d(L/2, slab_pos+L_slab+2*delta)
+
+    def instant_freq(self,xo):
+        ko=int(xo/self.delta)
+        phi = np.unwrap(np.angle(hilbert(self.Ez[:,ko])))
+        freq = 1/(np.pi*2)*np.gradient(phi,self.dt)
+        return freq
