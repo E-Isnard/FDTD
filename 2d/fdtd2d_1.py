@@ -11,8 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from time import perf_counter
+from scipy.signal import hilbert
+from scipy.ndimage import median_filter
 from fillbetween3d import fill_between_3d
-
 
 def progress(i, n):
     i += 1
@@ -26,19 +27,6 @@ def abc_order_1(i,Ez):
     Ez[i+1, :, 0] = Ez[i, :, 1]+k_abc*(Ez[i+1, :, 1]-Ez[i, :, 0])
     Ez[i+1, :, -1] = Ez[i, :, -2]+k_abc*(Ez[i+1, :, -2]-Ez[i, :, -1])
 
-def abc_order_2(i,Ez):
-    Ez[i+1, 0, 1:-1] = -Ez[i-1, 1, 1:-1]+k_abc*(Ez[i+1, 1, 1:-1]+Ez[i-1, 0, 1:-1])+k2_abc*(Ez[i,1,1:-1]+Ez[i,0,1:-1])+k3_abc*(Ez[i,1,2:]-2*Ez[i,1,1:-1]+Ez[i,1,:-2]+Ez[i,0,2:]-2*Ez[i,0,1:-1]+Ez[i,0,:-2])
-    Ez[i+1, -1, 1:-1] = -Ez[i-1, -2, 1:-1]+k_abc*(Ez[i+1, -2, 1:-1]+Ez[i-1, -1, 1:-1])+k2_abc*(Ez[i,-2,1:-1]+Ez[i,-1,1:-1])+k3_abc*(Ez[i,-2,2:]-2*Ez[i,-2,1:-1]+Ez[i,-2,:-2]+Ez[i,-1,2:]-2*Ez[i,-1,1:-1]+Ez[i,-1,:-2])
-    Ez[i+1, 1:-1, 0] = -Ez[i-1, 1:-1, 1]+k_abc*(Ez[i+1, 1:-1, 1]+Ez[i-1, 1:-1, 0])+k2_abc*(Ez[i,1:-1,1]+Ez[i,1:-1,0])+k3_abc*(Ez[i,2:,1]-2*Ez[i,1:-1,1]+Ez[i,:-2,1]+Ez[i,2:,0]-2*Ez[i,1:-1,0]+Ez[i,:-2,0])
-    Ez[i+1, 1:-1, -1] = -Ez[i-1, 1:-1, -2]+k_abc*(Ez[i+1, 1:-1, -2]+Ez[i-1, 1:-1, -1])+k2_abc*(Ez[i,1:-1,-2]+Ez[i,1:-1,-1])+k3_abc*(Ez[i,2:,-2]-2*Ez[i,1:-1,-2]+Ez[i,:-2,-2]+Ez[i,2:,-1]-2*Ez[i,1:-1,-1]+Ez[i,:-2,-1])
-
-
-def abc_order_2_wH(i,Ez,Hx,Hy):
-    Ez[i+1, 0, 1:] = Ez[i, 1, 1:]+k_abc*(Ez[i+1, 1, 1:]-Ez[i, 0, 1:])+k4_abc*(Hx[i+1,0,1:]-Hx[i+1,0,:-1]+Hx[i+1,1,1:]-Hx[i+1,1,:-1])
-    Ez[i+1, -1, 1:] = Ez[i, -2, 1:]+k_abc*(Ez[i+1, -2, 1:]-Ez[i, -1, 1:])+k4_abc*(Hx[i+1,-1,1:]-Hx[i+1,-1,:-1]+Hx[i+1,-2,1:]-Hx[i+1,-2,:-1])
-    Ez[i+1, 1:, 0] = Ez[i, 1:, 1]+k_abc*(Ez[i+1, 1:, 1]-Ez[i, 1:, 0])+k4_abc*(Hy[i+1,1:,0]-Hy[i+1,:-1,0]+Hy[i+1,1:,1]-Hy[i+1,:-1,1])
-    Ez[i+1, 1:, -1] = Ez[i, 1:, -2]+k_abc*(Ez[i+1, 1:, -2]-Ez[i, 1:, -1])+k4_abc*(Hy[i+1,1:,-1]-Hy[i+1,:-1,-1]+Hy[i+1,1:,-2]-Hy[i+1,:-1,-2])
-
 # Units
 t_unit = 1E-9  # ns
 xy_unit = 1E-3  # mm
@@ -50,14 +38,13 @@ eps_0 = eps_0_SI
 mu_0 = mu_0_SI
 c = (eps_0*mu_0)**(-1/2)
 
-
 dxy = 1.5E-3
-xymax = 400E-3
+xymax = 300E-3
 # courant_number = c*dt/dx
 courant_number = 0.95/np.sqrt(2)
 
 dt = courant_number*dxy/c
-Tmax = 400*dt
+Tmax = 1500*dt
 x = np.arange(0, xymax, dxy)
 y = np.arange(0, xymax, dxy)
 t = np.arange(0, Tmax, dt)
@@ -74,12 +61,10 @@ cb = courant_number*np.ones((nxy,nxy))
 
 j1=0
 j2 = nxy-1
-k1 = 100
-k2 = 120
+k1 = 40
+shift = int(93E-3/dxy)
+k2 = k1+shift
 epsR = 4*(1+0.67*np.sin(1e9*2*np.pi*t))
-
-if Hx.nbytes / 1024**3 > 1:
-    raise MemoryError("Too much memory")
 
 X, Y = np.meshgrid(x, y)
 mid = int(nxy/2)
@@ -99,17 +84,17 @@ for i in range(nt-1):
     Hx[i+1,:,1:] = Hx[i,:,1:] - courant_number*(Ez[i,:,1:]-Ez[i,:,:-1])
     Hy[i+1,1:,:] = Hy[i,1:,:] + courant_number*(Ez[i,1:,:]-Ez[i,:-1,:])
     #Silver-Muller
-    Hy[i+1,0,:] = Ez[i,0,:]
-    Hx[i+1,:,0] = -Ez[i,:,0]
+#     Hy[i+1,0,:] = Ez[i,0,:]
+#     Hx[i+1,:,0] = -Ez[i,:,0]
 
     Ez[i+1,:-1,:-1] = ca[:-1,:-1]*Ez[i,:-1,:-1]+cb[:-1,:-1]*(Hy[i+1,1:,:-1]-Hy[i+1,:-1,:-1]-Hx[i+1,:-1,1:]+Hx[i+1,:-1,:-1])
     #Silver-Muller
-    Ez[i+1,-1,:] = -Hy[i+1,-1,:]
-    Ez[i+1,:,-1] = Hx[i+1,:,-1]
+#     Ez[i+1,-1,:] = -Hy[i+1,-1,:]
+#     Ez[i+1,:,-1] = Hx[i+1,:,-1]
   
-    # abc_order_2(i,Ez)
+    abc_order_1(i,Ez)
 
-    Ez[i+1, :, mid] += source
+    Ez[i+1, :, 20] += source
     # Ez[i+1, mid, mid+10] += source
 
     progress(i, nt-1)
@@ -122,7 +107,7 @@ print(
 
 def anim3d():
 
-    fig = plt.figure(figsize=(30, 30))
+    fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection="3d", xlabel="X", ylabel="Y", zlabel="Z")
 
     x2 = x
@@ -154,11 +139,11 @@ def animContour():
     vmin = 0
     vmax = 1
     cmap = "jet"
-    fig = plt.figure(figsize=(30, 30))
+    fig = plt.figure(figsize=(10, 10))
     ax = plt.axes()
     plt_tmp = ax.contourf(X, Y, Ez[-1], vmin=vmin,
                           vmax=vmax, levels=100, cmap=cmap)
-    cb = plt.colorbar(plt_tmp)
+    plt.colorbar(plt_tmp)
     ax.contourf(X, Y, Ez[0], vmin=vmin, vmax=vmax, levels=100, cmap=cmap)
     
     x1 = x[k1]
@@ -173,7 +158,7 @@ def animContour():
 
     def anim2(i):
         ax.clear()
-        plt.plot(xs,ys,color="black") 
+        plt.plot(xs,ys,color="black",lw=4) 
         plot = ax.contourf(X, Y, Ez[i], vmin=vmin,
                            vmax=vmax, levels=100, cmap=cmap)
         ax.set_xlabel("X")
@@ -183,12 +168,14 @@ def animContour():
     a2 = animation.FuncAnimation(
         fig, anim2, interval=1000/60, frames=int((nt-1)*1), blit=False, repeat=False)
     print("contour:")
-    # a2.save("contour.mp4", fps=60, progress_callback=progress)
+#     a2.save("contour.mp4", fps=20, progress_callback=progress)
     plt.show()
 
 
 # anim3d()
 animContour()
-# plt.plot(t,Ez[:,mid,k1-10])
-
-# plt.show()
+E_out = Ez[:,mid,k2+10]
+plt.figure(figsize=(10,10))
+plt.xlabel("X")
+plt.plot(t,E_out)
+plt.show()

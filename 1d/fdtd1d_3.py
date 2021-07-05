@@ -9,6 +9,7 @@ We use a normalized version of E: Ẽ_z = sqrt(eps/mu)*E
 
 """
 
+from time import perf_counter
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -22,7 +23,7 @@ x_unit = 1E-3  # mm
 
 xmax = 600E-3/x_unit
 Tmax = 10E-9/t_unit
-dx = 1E-3/x_unit
+dx = 1.5E-3/x_unit
 # courant_number = c*dt/dx
 courant_number = 0.95
 
@@ -74,7 +75,7 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
     dt = courant_number*dx/c
     t = np.arange(0, Tmax, dt)
     nt = len(t)
-    #print(f"{nt = }")
+    print(f"{nt = }")
     source = source_func(t)
     epsR = epsR_func(t)
 
@@ -90,7 +91,6 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
     E[0, ks] = source[0]
     k_abc = (courant_number-1)/(courant_number+1)
-
     for i in range(nt-1):
 
         # Coefficients
@@ -101,18 +101,17 @@ def FDTD_1D(Tmax, courant_number, dx, xmax, epsR_func, k1, k2, source_func, ks):
 
         # Update equations
         H[i+1, 1:] = H[i, 1:]+courant_number*(E[i, 1:]-E[i, :-1])
-        H[i+1,0] = E[i,0]
+        # H[i+1,0] = E[i,0]
         E[i+1, :-1] = ca[:-1]*E[i, :-1]+cb[:-1]*(H[i+1, 1:]-H[i+1, :-1])
-        E[i+1,-1] = -H[i+1,-1]
+        # E[i+1,-1] = -H[i+1,-1]
 
         # ABC (from Liu phd thesis)
 
-        # E[i+1, 0] = E[i, 1]+k_abc*(E[i+1, 1]-E[i, 0])
-        # E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
+        E[i+1, 0] = E[i, 1]+k_abc*(E[i+1, 1]-E[i, 0])
+        E[i+1, -1] = E[i, -2]+k_abc*(E[i+1, -2]-E[i, -1])
 
         # Soft source
         E[i+1, ks] += source[i+1]
-
     return (t, x, E, H)
 
 
@@ -218,24 +217,24 @@ f_ext = f_ext_thin if L == 3E-3/x_unit else f_ext_thick
 phi, w_vec, E1, E2 = w(Tmax, courant_number, dx, xmax,
                        epsR_func, k1, k2, ks, ws, k2+2)
 
-plot_E(E, k2+2)
+# plot_E(E, k2+2)
 anim2_E_H(t, x, E, H, k1, k2, -5, 5, 1E-9, 1, 0)
 
-ana_signal = hilbert(E[:, k2+2])
-instanteneous_phase = np.unwrap(np.angle(ana_signal))
-f_hilbert = (1/(np.pi*2)*np.gradient(instanteneous_phase, t))
+# ana_signal = hilbert(E[:, k2+2])
+# instanteneous_phase = np.unwrap(np.angle(ana_signal))
+# f_hilbert = (1/(np.pi*2)*np.gradient(instanteneous_phase, t))
 
-dt = t[1]-t[0]
-i2 = int(2/dt)
-i9 = int(9/dt)
-f_liu = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
-# f_liu = w_vec[i2:i9]/(2*np.pi)
-plt.plot(t[i2:i9], f_hilbert[i2:i9],
-         label="$f_{Hilbert}$")
-plt.plot(t[i2:i9], f_ext[i2:i9], label="$f_{ext}$")
-plt.plot(t[i2:i9], f_liu, label="$f_{Liu}$")
-plt.xlabel("Time (ns)")
-plt.ylabel("Frequency (GHz)")
-plt.grid(ls="--")
-plt.legend()
-plt.show()
+# dt = t[1]-t[0]
+# i2 = int(2/dt)
+# i9 = int(9/dt)
+# f_liu = median_filter(w_vec[i2:i9], size=100)/(2*np.pi)
+# # f_liu = w_vec[i2:i9]/(2*np.pi)
+# plt.plot(t[i2:i9], f_hilbert[i2:i9],
+#          label="$f_{Hilbert}$")
+# plt.plot(t[i2:i9], f_ext[i2:i9], label="$f_{ext}$")
+# plt.plot(t[i2:i9], f_liu, label="$f_{Liu}$")
+# plt.xlabel("Time (ns)")
+# plt.ylabel("Frequency (GHz)")
+# plt.grid(ls="--")
+# plt.legend()
+# plt.show()

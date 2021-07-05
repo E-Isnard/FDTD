@@ -135,8 +135,8 @@ def anim3d(X,Y,Ez):
 
 
 def animContour(X,Y,Ez):
-    vmin = None
-    vmax = None
+    vmin = -1
+    vmax = 1
     cmap = "viridis"
     fig = plt.figure(figsize=(30, 30))
     ax = plt.axes()
@@ -158,6 +158,6 @@ def animContour(X,Y,Ez):
     plt.show()
 
 
-anim3d(X,Y,Ez)
+# anim3d(X,Y,Ez)
 # animContour(X,Y,Ez)
 animContour(X,Y,ana_sol)

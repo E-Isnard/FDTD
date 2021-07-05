@@ -132,7 +132,7 @@ def anim3d():
 
     a = animation.FuncAnimation(
         fig, anim, interval=1000/60, frames=int((nt-1)*0.75), blit=False, repeat=False)
-    print("anim3d:")
+    # print("anim3d:")
     # a.save("animation3d.gif", fps=60, progress_callback=progress)
     plt.show()
 
@@ -156,7 +156,7 @@ def animContour():
 
     a2 = animation.FuncAnimation(
         fig, anim2, interval=1000/60, frames=int((nt-1)*1), blit=False, repeat=False)
-    print("contour:")
+    # print("contour:")
     # a2.save("contour.gif", fps=60, progress_callback=progress)
     plt.show()
 
