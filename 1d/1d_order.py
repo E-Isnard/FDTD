@@ -39,7 +39,7 @@ def E0_func2(x):
     return np.sin(x)
 
 delta = 5e-3
-cfl_vec = np.logspace(-1,-4,num=4,base=2)
+cfl_vec = np.logspace(-1,-3,num=4,base=2)
 err_vec = []
 dt_vec = []
 print("Compute errors with constant δ")
@@ -53,25 +53,25 @@ for i,cfl in enumerate(cfl_vec):
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
     n5 = int(5/fdtd.dt)
-    err = np.linalg.norm(fdtd.Ez[n5, :]-E_ext[n5, :],np.inf)
+    err = np.linalg.norm((fdtd.Ez[n5, :]-E_ext[n5, :])/fdtd.n_space)
     dt_vec.append(fdtd.dt)
     err_vec.append(err)
     progress(i,len(cfl_vec))
 
 plt.loglog(dt_vec, err_vec)
-plt.title("Error as dt gets smaller")
+plt.title("Error as dt gets smaller with constant $\delta$")
 plt.grid(ls="--",which="both")
 plt.show()
 
 qt = np.log(err_vec[-1]/err_vec[0])/np.log(dt_vec[-1]/dt_vec[0])
 print(f"{qt = }")
 
-delta_vec = [5e-3,2.5e-3,1.25e-3]
-cfl=0.95
+delta_vec = np.logspace(-2,-5,num=4,base=2)
+dt = 1e-4
 err_vec = []
-print("Computing errors with constant cfl")
+print("Computing errors with constant dt")
 for i,delta in enumerate(delta_vec):
-    # cfl = fdtd.c*dt/delta
+    cfl = fdtd.c*dt/delta
     fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func2,
                 E0_func2, H0_func2, J_func2, cfl=cfl, boundary_condition="PEC", eps_0=1, mu_0=1)
     fdtd.run(False, False)
@@ -82,13 +82,14 @@ for i,delta in enumerate(delta_vec):
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
     n5 = int(5/fdtd.dt)
-    err = np.linalg.norm(fdtd.Ez[n5, :]-E_ext[n5, :],np.inf)
+    mid = int(fdtd.n_space/2)
+    err = np.linalg.norm((fdtd.Ez[n5, :]-E_ext[n5, :])/fdtd.n_space)
     err_vec.append(err)
     progress(i,len(delta_vec))
 
 plt.loglog(delta_vec, err_vec)
 plt.grid(ls="--",which="both")
-plt.title("Error as $\delta$ gets smaller")
+plt.title("Error as $\delta$ gets smaller with constant cfl")
 plt.show()
 qs = np.log(err_vec[-1]/err_vec[0])/np.log(delta_vec[-1]/delta_vec[0])
 print(f"{qs = }")
