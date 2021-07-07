@@ -128,7 +128,7 @@ class FDTD:
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
-        plt.legend(["$H_y$", "$\\tilde{E}_z$"])
+        plt.legend(["$\\tilde{E}_z$","$H_y$"])
         plt.fill_betweenx(y=[y_low, y_high], x1=x[k1],
                           x2=x[k2], color="grey", alpha=0.8)
 
