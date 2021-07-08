@@ -13,7 +13,7 @@ def progress(i, n):
 
 
 class FDTD:
-    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func,E0_func = lambda x: 0,H0_func = lambda x:0,J_func = lambda T,X: np.zeros(T.shape),cfl=None, boundary_condition="Mur",eps_0=8.85418782e-12,mu_0=4*np.pi*1e-7):
+    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func,E0_func = lambda x: 0,H0_func = lambda x:0,J_func = lambda T,X: np.zeros(T.shape),cfl=None, boundary_condition="Mur",eps_0=8.85418782e-12,mu_0=4*np.pi*1e-7,memory_limit=1):
         if d != 1 and d != 2:
             raise ValueError("Dimension should be 1 or 2.")
         self.eps_0 = eps_0
@@ -28,8 +28,10 @@ class FDTD:
         self.n_space = int(L/delta)+1
         self.nt = int(T_max/self.dt)+1
         shape = (self.nt,)+d*(self.n_space,)
-        self.Hx = np.zeros(shape) if d != 1 else None
         self.Hy = np.zeros(shape)
+        if self.Hy.nbytes/1024**3 > memory_limit:
+            raise MemoryError(f"Memory limit overrun ({self.Hy.nbytes/1024**3:.2f} GB > {memory_limit} GB)")
+        self.Hx = np.zeros(shape) if d != 1 else None
         self.Ez = np.zeros(shape)
         if d==1:
             x = np.linspace(0,L,self.n_space)
