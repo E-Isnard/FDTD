@@ -75,4 +75,3 @@ for i in range(nt):
     plt.pause(0.001)
 
 plt.show()
-print(H[:,0])

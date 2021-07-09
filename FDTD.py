@@ -13,7 +13,7 @@ def progress(i, n):
 
 
 class FDTD:
-    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func,E0_func = lambda x: 0,H0_func = lambda x:0,J_func = lambda T,X: np.zeros(T.shape),cfl=None, boundary_condition="Mur",eps_0=8.85418782e-12,mu_0=4*np.pi*1e-7,memory_limit=1):
+    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, E0_func=lambda *xi: 0, H0_func=lambda *xi: 0,H0_func2=lambda *xi:0, J_func=lambda T, *Xi: np.zeros(T.shape), cfl=None, boundary_condition="Mur", eps_0=8.85418782e-12, mu_0=4*np.pi*1e-7, memory_limit=1):
         if d != 1 and d != 2:
             raise ValueError("Dimension should be 1 or 2.")
         self.eps_0 = eps_0
@@ -30,23 +30,33 @@ class FDTD:
         shape = (self.nt,)+d*(self.n_space,)
         self.Hy = np.zeros(shape)
         if self.Hy.nbytes/1024**3 > memory_limit:
-            raise MemoryError(f"Memory limit overrun ({self.Hy.nbytes/1024**3:.2f} GB > {memory_limit} GB)")
+            raise MemoryError(
+                f"Memory limit overrun ({self.Hy.nbytes/1024**3:.2f} GB > {memory_limit} GB)")
         self.Hx = np.zeros(shape) if d != 1 else None
         self.Ez = np.zeros(shape)
-        if d==1:
-            x = np.linspace(0,L,self.n_space)
-            t = np.linspace(0,T_max,self.nt)
-            X,T = np.meshgrid(x,t)
+        if d == 1:
+            x = np.linspace(0, L, self.n_space)
+            t = np.linspace(0, T_max, self.nt)
+            X, T = np.meshgrid(x, t)
             self.Hy[0] = H0_func(x)
             self.Ez[0] = E0_func(x)
-            self.J = J_func(T,X)
+            self.J = J_func(T, X)
+        if d == 2:
+            x = np.linspace(0, L, self.n_space)
+            y = np.linspace(0, L, self.n_space)
+            t = np.linspace(0, T_max, self.nt)
+            X,Y,T = np.meshgrid(x,y,t,indexing="ij")
+            X2,Y2 = np.meshgrid(x,y)
+            self.Ez[0] = E0_func(X2,Y2)
+            self.Hy[0] = H0_func(X2,Y2)
+            self.Hx[0] = H0_func(X2,Y2)
+            self.J = J_func(T,X,Y)
         self.source_func = source_func
         self.source_pos = source_pos
         self.L_slab = L_slab
         self.slab_pos = slab_pos
         self.epsr_func = epsr_func
         self.boundary_condition = boundary_condition
-        
 
     def run(self, progress_bar=True, info=True):
         ca = np.ones(self.d*(self.n_space,))
@@ -67,16 +77,17 @@ class FDTD:
                 self.Hy[n+1, 1:] = self.Hy[n, 1:] + \
                     self.cfl*(self.Ez[n, 1:]-self.Ez[n, :-1])
                 self.Ez[n+1, :-1] = ca[:-1]*self.Ez[n, :-1] + \
-                    cb[:-1]*(self.Hy[n+1, 1:]-self.Hy[n+1, :-1]-self.J[n+1,:-1]*self.delta)
-                if self.boundary_condition=="Mur":
+                    cb[:-1]*(self.Hy[n+1, 1:]-self.Hy[n+1, :-1] -
+                             self.J[n+1, :-1]*self.delta)
+                if self.boundary_condition == "Mur":
                     self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
                         (self.Ez[n+1, 1]-self.Ez[n, 0])
                     self.Ez[n+1, -1] = self.Ez[n, -2]+coeff_mur * \
                         (self.Ez[n+1, -2]-self.Ez[n, -1])
-                if self.boundary_condition=="PEC":
-                    self.Ez[n+1,0]=0
-                    self.Ez[n+1,-1]=0
-                    self.Hy[n+1,0]=self.Hy[n+1,1]
+                if self.boundary_condition == "PEC":
+                    self.Ez[n+1, 0] = 0
+                    self.Ez[n+1, -1] = 0
+                    self.Hy[n+1, 0] = self.Hy[n+1, 1]
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
 
                 if progress_bar:
@@ -103,14 +114,20 @@ class FDTD:
                 self.Ez[n+1, :-1, :-1] = ca[:-1, :-1]*self.Ez[n, :-1, :-1]+cb[:-1, :-1]*(
                     self.Hy[n+1, 1:, :-1]-self.Hy[n+1, :-1, :-1]-self.Hx[n+1, :-1, 1:]+self.Hx[n+1, :-1, :-1])
 
-                self.Ez[n+1, 0, :] = self.Ez[n, 1, :]+coeff_mur * \
-                    (self.Ez[n+1, 1, :]-self.Ez[n, 0, :])
-                self.Ez[n+1, -1, :] = self.Ez[n, -2, :]+coeff_mur * \
-                    (self.Ez[n+1, -2, :]-self.Ez[n, -1, :])
-                self.Ez[n+1, :, 0] = self.Ez[n, :, 1]+coeff_mur * \
-                    (self.Ez[n+1, :, 1]-self.Ez[n, :, 0])
-                self.Ez[n+1, :, -1] = self.Ez[n, :, -2]+coeff_mur * \
-                    (self.Ez[n+1, :, -2]-self.Ez[n, :, -1])
+                if self.boundary_condition == "Mur":
+                    self.Ez[n+1, 0, :] = self.Ez[n, 1, :]+coeff_mur * \
+                        (self.Ez[n+1, 1, :]-self.Ez[n, 0, :])
+                    self.Ez[n+1, -1, :] = self.Ez[n, -2, :]+coeff_mur * \
+                        (self.Ez[n+1, -2, :]-self.Ez[n, -1, :])
+                    self.Ez[n+1, :, 0] = self.Ez[n, :, 1]+coeff_mur * \
+                        (self.Ez[n+1, :, 1]-self.Ez[n, :, 0])
+                    self.Ez[n+1, :, -1] = self.Ez[n, :, -2]+coeff_mur * \
+                        (self.Ez[n+1, :, -2]-self.Ez[n, :, -1])
+                if self.boundary_condition == "PEC":
+                    self.Ez[n+1, 0, :] = 0
+                    self.Ez[n+1, :, 0] = 0
+                    self.Ez[n+1, -1, :] = 0
+                    self.Ez[n+1, :, -1] = 0
 
                 self.Ez[n+1, ks1, ks2] += self.source_func(tn+self.dt)
                 if progress_bar:
@@ -130,7 +147,7 @@ class FDTD:
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
-        plt.legend(["$\\tilde{E}_z$","$H_y$"])
+        plt.legend(["$\\tilde{E}_z$", "$H_y$"])
         plt.fill_betweenx(y=[y_low, y_high], x1=x[k1],
                           x2=x[k2], color="grey", alpha=0.8)
 
@@ -188,8 +205,8 @@ class FDTD:
             plt.show()
         plt.close()
 
-    def animContour(self, vmin, vmax, interval=1e-3, cmap="jet", save=False):
-        if self.d !=2:
+    def animContour(self, vmin=None, vmax=None, interval=1e-3, cmap="jet", save=False):
+        if self.d != 2:
             raise ValueError("This method should be used in 2d only")
         x = np.linspace(0, self.L, self.n_space)
         y = np.linspace(0, self.L, self.n_space)
@@ -197,7 +214,7 @@ class FDTD:
         fig = plt.figure(figsize=(10, 10))
         ax = plt.axes()
         plt_tmp = ax.contourf(
-            X, Y, self.Ez[-1], vmin=vmin, vmax=vmax, levels=100, cmap=cmap)
+            X, Y, self.Ez[len(self.Ez)//2], vmin=vmin, vmax=vmax, levels=100, cmap=cmap)
         plt.colorbar(plt_tmp)
         ax.contourf(X, Y, self.Ez[0], vmin=vmin,
                     vmax=vmax, levels=100, cmap=cmap)
@@ -233,27 +250,27 @@ class FDTD:
             a2.save("contour.mp4", fps=60, progress_callback=progress)
         plt.show()
 
+    def animSurface(self, z_low, z_high, interval=1e-3, save=False):
+        fig = plt.figure(figsize=(10, 10))
+        ax = plt.axes(projection="3d", xlabel="X", ylabel="Y")
+        x = np.linspace(0, self.L, self.n_space)
+        y = np.linspace(0, self.L, self.n_space)
+        X, Y = np.meshgrid(x, y)
 
-    def animSurface(self,z_low,z_high,interval=1e-3,save=False):
-        fig = plt.figure(figsize=(10,10))
-        ax = plt.axes(projection="3d",xlabel="X",ylabel="Y")
-        x = np.linspace(0,self.L,self.n_space)
-        y = np.linspace(0,self.L,self.n_space)
-        X,Y = np.meshgrid(x,y)
         def anim(i):
             ax.clear()
-            ax.set_zlim(z_low,z_high)
-            plot = ax.plot_surface(X,Y,self.Ez[i])
+            ax.set_zlim(z_low, z_high)
+            plot = ax.plot_surface(X, Y, self.Ez[i])
             return plot,
-        a = animation.FuncAnimation(fig,anim,interval=interval,frames=self.nt-1,repeat=False)
+        a = animation.FuncAnimation(
+            fig, anim, interval=interval, frames=self.nt-1, repeat=False)
         if save:
             print("Surface Animation:")
-            a.save("SurfaceAnimation.mp4",fps=60,progress_callback=progress)
+            a.save("SurfaceAnimation.mp4", fps=60, progress_callback=progress)
         plt.show()
 
-
-    def instant_freq(self,xo):
-        ko=int(xo/self.delta)
-        phi = np.unwrap(np.angle(hilbert(self.Ez[:,ko])))
-        freq = 1/(np.pi*2)*np.gradient(phi,self.dt)
+    def instant_freq(self, xo):
+        ko = int(xo/self.delta)
+        phi = np.unwrap(np.angle(hilbert(self.Ez[:, ko])))
+        freq = 1/(np.pi*2)*np.gradient(phi, self.dt)
         return freq
