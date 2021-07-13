@@ -37,22 +37,21 @@ def H0_func2(x):
 def E0_func2(x):
     return np.sin(x)
 
-delta = 1e-1
+delta = 1e-2
 cfl_vec = [1/8,1/4,1/2,1]
 err_vec = []
 dt_vec = []
 print("Compute errors with constant δ")
 for i,cfl in enumerate(cfl_vec):
     fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func2,
-                E0_func2, H0_func2, J_func2, cfl=cfl, boundary_condition="PEC", eps_0=1, mu_0=1)
+                E0_func2, H0_func2, J_func = J_func2, cfl=cfl, boundary_condition="PEC", eps_0=1, mu_0=1)
     fdtd.run(False, False)
     x = np.linspace(0, L, fdtd.n_space)
     t = np.linspace(0, T_max, fdtd.nt)
     X, T = np.meshgrid(x, t)
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
-    n5 = int(5/fdtd.dt)
-    err = np.linalg.norm(fdtd.Ez[n5]-E_ext[n5],np.inf)
+    err = np.max(np.linalg.norm(fdtd.Ez-E_ext,np.inf,axis=1))
     dt_vec.append(fdtd.dt)
     err_vec.append(err)
     progress(i,len(cfl_vec))
@@ -67,14 +66,14 @@ plt.show()
 qt = np.log(err_vec[-1]/err_vec[0])/np.log(dt_vec[-1]/dt_vec[0])
 print(f"{qt = }")
 
-delta_vec = [1/8,1/4,1/2]
-dt = 1e-2
+delta_vec = np.logspace(-2,-4,num=4,base=2)
+dt = 5e-3
 err_vec = []
 print("Computing errors with constant dt")
 for i,delta in enumerate(delta_vec):
     cfl = fdtd.c*dt/delta
     fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func2,
-                E0_func2, H0_func2, J_func2, cfl=cfl, boundary_condition="PEC", eps_0=1, mu_0=1)
+                E0_func2, H0_func2, J_func = J_func2, cfl=cfl, boundary_condition="PEC", eps_0=1, mu_0=1)
     fdtd.run(False, False)
     x = np.linspace(0, L, fdtd.n_space)
     t = np.linspace(0, T_max, fdtd.nt)
@@ -82,8 +81,7 @@ for i,delta in enumerate(delta_vec):
     X, T = np.meshgrid(x, t)
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
-    n5 = int(5/fdtd.dt)
-    err = np.linalg.norm(fdtd.Hy[n5]-H_ext[n5],np.inf)
+    err  = np.max(np.linalg.norm(fdtd.Ez-E_ext,np.inf,axis=1))
     err_vec.append(err)
     progress(i,len(delta_vec))
 

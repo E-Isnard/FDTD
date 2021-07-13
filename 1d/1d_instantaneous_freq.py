@@ -1,8 +1,5 @@
-from numpy.core.defchararray import title
-from scipy.ndimage.measurements import label
 from FDTD import FDTD, progress
 import numpy as np
-from scipy.signal import hilbert
 import matplotlib.pyplot as plt
 from scipy.ndimage import median_filter
 
@@ -21,7 +18,6 @@ wm = 1e9*2*np.pi
 b = 0.67
 epsr_0 = 3.
 def epsr_func(t): return epsr_0*(1+b*np.sin(wm*t))
-
 
 L_slab = 93e-3
 slab_pos = L/2-L_slab
@@ -73,12 +69,12 @@ def f_ext_func(L_slab):
 
 
 f_ext = f_ext_func(L_slab)
-plt.plot(t[n2:n9], f_Liu[n2:n9], label="$f_{Liu}$")
-plt.plot(t[n2:n9], f_hilbert[n2:n9], label="$f_{Hilbert}$")
-plt.plot(t[n2:n9], f_ext[n2:n9], label="$f_{ext}$")
-plt.xlabel("Time [s]")
-plt.ylabel("Frequency [Hz]")
-plt.title("Instantenious frequencies")
+plt.plot(t[n2:n9]*1e9, f_Liu[n2:n9]/1e9, label="$f_{Liu}$")
+plt.plot(t[n2:n9]*1e9, f_hilbert[n2:n9]/1e9, label="$f_{Hilbert}$")
+plt.plot(t[n2:n9]*1e9, f_ext[n2:n9]/1e9, label="$f_{ext}$")
+plt.xlabel("Time [ns]")
+plt.ylabel("Frequency [GHz]")
+plt.title(f"Instantaneous frequencies for b={b}")
 plt.legend()
 plt.show()
 
@@ -102,8 +98,12 @@ for i, L_slab in enumerate(L_vec):
     swings_fdtd.append(np.max(f_fdtd[n2:n9])-np.min(f_fdtd[n2:n9]))
     progress(i, 100)
 
-plt.plot(L_vec, swings_ext, label="Exact freq swings")
-plt.plot(L_vec, swings_fdtd, label="FDTD freq swings")
+swings_fdtd = np.array(swings_fdtd)
+swings_ext = np.array(swings_ext)
+plt.plot(L_vec*1e3, swings_ext/1e9, label="Exact freq swings")
+plt.plot(L_vec*1e3, swings_fdtd/1e9, label="FDTD freq swings")
 plt.legend()
-plt.title("Frequencies swings for various slab lengths")
+plt.xlabel("Width of slab [mm]")
+plt.ylabel("Swing of instantaneous frequency [GHz]")
+plt.title(f"Frequencies swings for various slab lengths for b={b}")
 plt.show()

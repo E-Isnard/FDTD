@@ -45,7 +45,7 @@ def E0_func2(x):
 
 
 fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func1,
-            E0_func1, H0_func1, J_func1, cfl=1/2, eps_0=1, mu_0=1, boundary_condition="PEC")
+            E0_func1, H0_func1, J_func= J_func1, cfl=1/2, eps_0=1, mu_0=1, boundary_condition="PEC")
 fdtd.run()
 n5 = int(5/fdtd.dt)
 x = np.linspace(0, L, fdtd.n_space)
@@ -80,7 +80,7 @@ print(f"rel_err H = {rel_err2*100:.2f} %\n")
 
 
 fdtd2 = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func2,
-             E0_func2, H0_func2, J_func2, cfl=1/2, boundary_condition="PEC", eps_0=1, mu_0=1)
+             E0_func2, H0_func2, J_func = J_func2, cfl=1/2, boundary_condition="PEC", eps_0=1, mu_0=1)
 
 E_ext2 = np.cos(T)*np.sin(X)
 H_ext2 = np.sin(T)*np.cos(X)
@@ -106,7 +106,7 @@ err = np.linalg.norm(fdtd2.Ez[n5, :]-E_ext2[n5, :],np.inf)
 err2 = np.linalg.norm(fdtd2.Hy[n5, :]-H_ext2[n5, :],np.inf)
 rel_err = err/np.linalg.norm(E_ext2[n5, :],np.inf)
 rel_err2 = err2/np.linalg.norm(H_ext2[n5, :],np.inf)
-print("Errors for 1st case (uniform norm):")
+print("Errors for 2nd case (uniform norm):")
 print(f"err E = {err:e}")
 print(f"err H = {err2:e}")
 print(f"rel_err E = {rel_err*100:.2f} %")
