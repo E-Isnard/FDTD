@@ -43,6 +43,8 @@ def H0_func2(x):
 def E0_func2(x):
     return np.sin(x)
 
+def norm(F):
+    return np.max(np.max(np.abs(F),axis=1))
 
 fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func1,
             E0_func1, H0_func1, J_func= J_func1, cfl=1/2, eps_0=1, mu_0=1, boundary_condition="PEC")
@@ -68,10 +70,10 @@ plt.legend()
 plt.title(
     "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $1^{st}$ case")
 plt.show()
-err = np.linalg.norm(fdtd.Ez[n5, :]-E_ext[n5, :],np.inf)
-err2 = np.linalg.norm(fdtd.Hy[n5, :]-H_ext[n5, :],np.inf)
-rel_err = err/np.linalg.norm(E_ext[n5, :],np.inf)
-rel_err2 = err2/np.linalg.norm(H_ext[n5, :],np.inf)
+err = norm(fdtd.Ez-E_ext)
+err2 = norm(fdtd.Hy-H_ext)
+rel_err = err/norm(E_ext)
+rel_err2 = err2/norm(H_ext)
 print("Errors for 1st case (uniform norm):")
 print(f"err E = {err:e}")
 print(f"err H = {err2:e}")
@@ -102,10 +104,10 @@ plt.title(
     "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $2^{nd}$ case")
 plt.legend()
 plt.show()
-err = np.linalg.norm(fdtd2.Ez[n5, :]-E_ext2[n5, :],np.inf)
-err2 = np.linalg.norm(fdtd2.Hy[n5, :]-H_ext2[n5, :],np.inf)
-rel_err = err/np.linalg.norm(E_ext2[n5, :],np.inf)
-rel_err2 = err2/np.linalg.norm(H_ext2[n5, :],np.inf)
+err = norm(fdtd2.Ez-E_ext2)
+err2 = norm(fdtd2.Hy-H_ext2)
+rel_err = err/norm(E_ext2)
+rel_err2 = err2/norm(H_ext2)
 print("Errors for 2nd case (uniform norm):")
 print(f"err E = {err:e}")
 print(f"err H = {err2:e}")

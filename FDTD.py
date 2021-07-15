@@ -13,7 +13,7 @@ def progress(i, n):
 
 
 class FDTD:
-    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, E0_func=lambda *xi: 0, H0_func=lambda *xi: 0,H0_func2=lambda *xi:0, J_func=lambda T, *Xi: np.zeros(T.shape), cfl=None, boundary_condition="Mur", eps_0=8.85418782e-12, mu_0=4*np.pi*1e-7, memory_limit=1):
+    def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, E0_func=lambda *xi: 0, H0_func=lambda *xi: 0, H0_func2=lambda *xi: 0, J_func=lambda T, *Xi: np.zeros(T.shape), cfl=None, boundary_condition="Mur", eps_0=8.85418782e-12, mu_0=4*np.pi*1e-7, memory_limit=1):
         if d != 1 and d != 2:
             raise ValueError("Dimension should be 1 or 2.")
         self.eps_0 = eps_0
@@ -45,12 +45,12 @@ class FDTD:
             x = np.linspace(0, L, self.n_space)
             y = np.linspace(0, L, self.n_space)
             t = np.linspace(0, T_max, self.nt)
-            X,Y,T = np.meshgrid(x,y,t,indexing="ij")
-            X2,Y2 = np.meshgrid(x,y)
-            self.Ez[0] = E0_func(X2,Y2)
-            self.Hy[0] = H0_func(X2,Y2)
-            self.Hx[0] = H0_func(X2,Y2)
-            self.J = J_func(T,X,Y)
+            X, Y, T = np.meshgrid(x, y, t, indexing="ij")
+            X2, Y2 = np.meshgrid(x, y)
+            self.Ez[0] = E0_func(X2, Y2)
+            self.Hy[0] = H0_func(X2, Y2)
+            self.Hx[0] = H0_func(X2, Y2)
+            self.J = J_func(T, X, Y)
         self.source_func = source_func
         self.source_pos = source_pos
         self.L_slab = L_slab
@@ -74,6 +74,7 @@ class FDTD:
                 ca[k1:k2] = self.epsr_func(tn)/self.epsr_func(tn+self.dt)
                 cb[k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
 
+                self.Hy[n+1,0] = self.Hy[n,0]+self.cfl*(self.Ez[n,1]-self.Ez[n,0])
                 self.Hy[n+1, 1:] = self.Hy[n, 1:] + \
                     self.cfl*(self.Ez[n, 1:]-self.Ez[n, :-1])
                 self.Ez[n+1, :-1] = ca[:-1]*self.Ez[n, :-1] + \
@@ -87,7 +88,7 @@ class FDTD:
                 if self.boundary_condition == "PEC":
                     self.Ez[n+1, 0] = 0
                     self.Ez[n+1, -1] = 0
-                    self.Hy[n+1, 0] = self.Hy[n+1, 1]
+                    # self.Hy[n+1, 0] = self.Hy[n+1, 1]
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
 
                 if progress_bar:
@@ -162,7 +163,7 @@ class FDTD:
 
         frames = self.nt/5 if save else self.nt
         ani = animation.FuncAnimation(
-            fig, animate, interval=interval, frames=frames)
+            fig, animate, interval=interval, frames=self.nt)
 
         if save:
             ani.save("anim.gif", fps=60)
@@ -274,3 +275,9 @@ class FDTD:
         phi = np.unwrap(np.angle(hilbert(self.Ez[:, ko])))
         freq = 1/(np.pi*2)*np.gradient(phi, self.dt)
         return freq
+
+    def spectrum(self, xo):
+        ko = int(xo/self.delta)
+        freqs = np.fft.fftfreq(self.nt, d=self.dt)
+        spectrum = np.fft.fft(self.Ez[:, ko])
+        return freqs, spectrum

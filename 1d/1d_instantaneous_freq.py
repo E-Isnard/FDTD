@@ -3,10 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import median_filter
 
+
 d = 1
 L = 800e-3
 T_max = 10e-9
-delta = 1e-3
+delta = 8e-4
 
 source_pos = 10*delta
 ws = 1e10*2*np.pi
@@ -18,8 +19,11 @@ wm = 1e9*2*np.pi
 b = 0.67
 epsr_0 = 3.
 def epsr_func(t): return epsr_0*(1+b*np.sin(wm*t))
-
-L_slab = 93e-3
+eps0 = 8.85418782e-12
+mu0 = 4e-7*np.pi
+v0 = 1/np.sqrt(epsr_0*eps0*mu0)
+L0 = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
+L_slab = L0
 slab_pos = L/2-L_slab
 
 fdtd = FDTD(L, delta, T_max, d, source_func1,
@@ -86,13 +90,14 @@ t = np.linspace(0, T_max, fdtd.nt)
 
 n2 = int(2e-9/fdtd.dt)
 n9 = int(9e-9/fdtd.dt)
+xo = L_slab+slab_pos+2*fdtd.delta
 for i, L_slab in enumerate(L_vec):
 
     slab_pos = L/2-L_slab
     fdtd.L_slab = L_slab
     fdtd.slab_pos = slab_pos
     fdtd.run(False, False)
-    f_fdtd = fdtd.instant_freq(L_slab+slab_pos+2*fdtd.delta)
+    f_fdtd = fdtd.instant_freq(xo)
     f_ext = f_ext_func(L_slab)
     swings_ext.append(np.max(f_ext[n2:n9])-np.min(f_ext[n2:n9]))
     swings_fdtd.append(np.max(f_fdtd[n2:n9])-np.min(f_fdtd[n2:n9]))

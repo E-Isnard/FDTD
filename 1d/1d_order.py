@@ -37,8 +37,11 @@ def H0_func2(x):
 def E0_func2(x):
     return np.sin(x)
 
-delta = 1e-2
-cfl_vec = [1/8,1/4,1/2,1]
+def norm(u):
+    return np.max(np.max(np.abs(u),axis=1))
+
+delta = 1e-1
+cfl_vec = np.logspace(0,-1,num=200,base=2)
 err_vec = []
 dt_vec = []
 print("Compute errors with constant δ")
@@ -51,12 +54,12 @@ for i,cfl in enumerate(cfl_vec):
     X, T = np.meshgrid(x, t)
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
-    err = np.max(np.linalg.norm(fdtd.Ez-E_ext,np.inf,axis=1))
+    err = norm(fdtd.Ez-E_ext)
     dt_vec.append(fdtd.dt)
     err_vec.append(err)
     progress(i,len(cfl_vec))
 
-plt.loglog(dt_vec, err_vec)
+plt.plot(dt_vec, err_vec)
 plt.title("Error as dt gets smaller with constant $\delta$")
 plt.grid(ls="--",which="both")
 plt.xlabel("$\mathrm{d}$t [s]")
@@ -66,9 +69,10 @@ plt.show()
 qt = np.log(err_vec[-1]/err_vec[0])/np.log(dt_vec[-1]/dt_vec[0])
 print(f"{qt = }")
 
-delta_vec = np.logspace(-2,-4,num=4,base=2)
-dt = 5e-3
+delta_vec = np.logspace(-1,-3,num=200,base=2)
+dt = 1e-2
 err_vec = []
+# cfl=1
 print("Computing errors with constant dt")
 for i,delta in enumerate(delta_vec):
     cfl = fdtd.c*dt/delta
@@ -81,13 +85,15 @@ for i,delta in enumerate(delta_vec):
     X, T = np.meshgrid(x, t)
     E_ext = np.cos(T)*np.sin(X)
     H_ext = np.sin(T)*np.cos(X)
-    err  = np.max(np.linalg.norm(fdtd.Ez-E_ext,np.inf,axis=1))
+    err  = norm(fdtd.Ez-E_ext)
     err_vec.append(err)
+    if i%20==0:
+        print(norm(fdtd.Ez-E_ext))
     progress(i,len(delta_vec))
 
-plt.loglog(delta_vec, err_vec)
+plt.plot(delta_vec, err_vec)
 plt.grid(ls="--",which="both")
-plt.title("Error as $\delta$ gets smaller with constant cfl")
+plt.title("Error as $\delta$ gets smaller with constant dt")
 plt.xlabel("$\delta$ [m]")
 plt.ylabel("Error ($L^\infty$)")
 plt.show()
