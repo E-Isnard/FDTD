@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from time import perf_counter
 from matplotlib import animation
 from scipy.signal.signaltools import hilbert
+from scipy.integrate import quad_vec,simps
 
 
 def progress(i, n):
@@ -86,7 +87,7 @@ class FDTD:
                     self.Ez[n+1, -1] = self.Ez[n, -2]+coeff_mur * \
                         (self.Ez[n+1, -2]-self.Ez[n, -1])
                 if self.boundary_condition == "PEC":
-                    self.Ez[n+1, 0] = 0
+                    # self.Ez[n+1, 0] = 0
                     self.Ez[n+1, -1] = 0
                     # self.Hy[n+1, 0] = self.Hy[n+1, 1]
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
@@ -281,3 +282,9 @@ class FDTD:
         freqs = np.fft.fftfreq(self.nt, d=self.dt)
         spectrum = np.fft.fft(self.Ez[:, ko])
         return freqs, spectrum
+
+    def energy(self):
+        U = 1/2*(self.Ez**2+self.Hy**2)
+        # U_func = lambda x : U[:,int(x/self.delta)]
+        energy = simps(U,dx=self.delta)
+        return energy
