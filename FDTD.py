@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from time import perf_counter
 from matplotlib import animation
 from scipy.signal.signaltools import hilbert
-from scipy.integrate import quad_vec,simps
+from scipy.integrate import simps
 
 
 def progress(i, n):
@@ -74,22 +74,23 @@ class FDTD:
                 tn = n*self.dt
                 ca[k1:k2] = self.epsr_func(tn)/self.epsr_func(tn+self.dt)
                 cb[k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
+                
+                self.Hy[n+1, :-1] = self.Hy[n, :-1] + \
+                    self.cfl*(self.Ez[n,1:]-self.Ez[n,:-1])
 
-                self.Hy[n+1,0] = self.Hy[n,0]+self.cfl*(self.Ez[n,1]-self.Ez[n,0])
-                self.Hy[n+1, 1:] = self.Hy[n, 1:] + \
-                    self.cfl*(self.Ez[n, 1:]-self.Ez[n, :-1])
-                self.Ez[n+1, :-1] = ca[:-1]*self.Ez[n, :-1] + \
-                    cb[:-1]*(self.Hy[n+1, 1:]-self.Hy[n+1, :-1] -
-                             self.J[n+1, :-1]*self.delta)
+                self.Ez[n+1, 1:] = ca[1:]*self.Ez[n, 1:] + cb[1:] * \
+                    (self.Hy[n+1,1:]-self.Hy[n+1,:-1]-self.J[n+1, 1:]*self.delta)
+
                 if self.boundary_condition == "Mur":
                     self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
                         (self.Ez[n+1, 1]-self.Ez[n, 0])
                     self.Ez[n+1, -1] = self.Ez[n, -2]+coeff_mur * \
                         (self.Ez[n+1, -2]-self.Ez[n, -1])
+
                 if self.boundary_condition == "PEC":
-                    # self.Ez[n+1, 0] = 0
                     self.Ez[n+1, -1] = 0
-                    # self.Hy[n+1, 0] = self.Hy[n+1, 1]
+                    self.Ez[n+1,0] = 0
+
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
 
                 if progress_bar:
@@ -145,7 +146,8 @@ class FDTD:
         k2 = k1+shift
         x = np.linspace(0, self.L, self.n_space)
         fig = plt.figure()
-        line, line2 = plt.plot(x, np.array([self.Ez[0], self.Hy[0]]).T)
+        line, = plt.plot(x,self.Ez[0])
+        line2, = plt.plot(x,self.Hy[0])
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
@@ -284,7 +286,6 @@ class FDTD:
         return freqs, spectrum
 
     def energy(self):
-        U = 1/2*(self.Ez**2+self.Hy**2)
-        # U_func = lambda x : U[:,int(x/self.delta)]
-        energy = simps(U,dx=self.delta)
+        u_em = (self.Ez**2+self.Hy**2)/2
+        energy = simps(u_em, dx=self.delta)
         return energy
