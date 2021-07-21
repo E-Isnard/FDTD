@@ -1,5 +1,6 @@
 from FDTD import FDTD,progress
 import numpy as np
+import matplotlib.pyplot as plt
 d=1
 L=600e-3
 T_max = 10e-9
@@ -18,7 +19,12 @@ L_slab = 93e-3
 slab_pos = L/2-L_slab
 
 
-fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func)
+fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func,boundary_condition="Mur")
 fdtd.run()
 fdtd.anim1d(-3,3)
 fdtd.plotE1d(slab_pos+L_slab+2*delta)
+
+energy = fdtd.energy()
+t = np.linspace(0,fdtd.T_max,fdtd.nt)
+plt.plot(t,energy)
+plt.show()

@@ -23,7 +23,7 @@ eps0 = 8.85418782e-12
 mu0 = 4e-7*np.pi
 v0 = 1/np.sqrt(epsr_0*eps0*mu0)
 L0 = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
-L_slab = L0
+L_slab = 3e-3
 slab_pos = L/2-L_slab
 
 fdtd = FDTD(L, delta, T_max, d, source_func1,

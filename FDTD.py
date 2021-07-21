@@ -70,16 +70,14 @@ class FDTD:
             ks = int(self.source_pos/self.delta)
             if info:
                 start = perf_counter()
+            self.Hy[0,:-1]+=(self.Ez[0,1:]-self.Ez[0,:-1])*self.cfl/2
+            self.Hy[0,-1] = self.Hy[0,-2]
             for n in range(self.nt-1):
                 tn = n*self.dt
                 ca[k1:k2] = self.epsr_func(tn)/self.epsr_func(tn+self.dt)
                 cb[k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
-                
-                self.Hy[n+1, :-1] = self.Hy[n, :-1] + \
-                    self.cfl*(self.Ez[n,1:]-self.Ez[n,:-1])
 
-                self.Ez[n+1, 1:] = ca[1:]*self.Ez[n, 1:] + cb[1:] * \
-                    (self.Hy[n+1,1:]-self.Hy[n+1,:-1]-self.J[n+1, 1:]*self.delta)
+                self.Ez[n+1,1:-1] = ca[1:-1]*self.Ez[n,1:-1]+cb[1:-1]*(self.Hy[n,1:-1]-self.Hy[n,:-2]-self.J[n,1:-1]*self.delta)
 
                 if self.boundary_condition == "Mur":
                     self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
@@ -89,10 +87,16 @@ class FDTD:
 
                 if self.boundary_condition == "PEC":
                     self.Ez[n+1, -1] = 0
-                    self.Ez[n+1,0] = 0
+                    self.Ez[n+1, 0] = 0
+                
+                if self.boundary_condition == "SM":
+                    self.Ez[n+1,0] = self.Hy[n,0]
+                    self.Ez[n+1,-1] = -self.Hy[n,-1]
+
 
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
-
+                self.Hy[n+1,:-1] = self.Hy[n,:-1]+self.cfl*(self.Ez[n+1,1:]-self.Ez[n+1,:-1])
+                self.Hy[n+1,-1] = self.Hy[n+1,-2]
                 if progress_bar:
                     progress(n, self.nt-1)
             if info:
@@ -141,13 +145,14 @@ class FDTD:
     def anim1d(self, y_low, y_high, interval=1e-3, save=False, show=True):
         if self.d != 1:
             raise ValueError("This method must be used only in 1d")
+        Ho = self.H_on_E_grid()
         k1 = int(self.slab_pos/self.delta)
         shift = int(self.L_slab/self.delta)
         k2 = k1+shift
         x = np.linspace(0, self.L, self.n_space)
         fig = plt.figure()
-        line, = plt.plot(x,self.Ez[0])
-        line2, = plt.plot(x,self.Hy[0])
+        line, = plt.plot(x, self.Ez[0])
+        line2, = plt.plot(x, Ho[0])
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
@@ -160,7 +165,7 @@ class FDTD:
 
         def animate(i):
             y1 = self.Ez[i].reshape((self.n_space, 1))
-            y2 = self.Hy[i].reshape((self.n_space, 1))
+            y2 = Ho[i].reshape((self.n_space, 1))
             line.set_data(x, y1)
             line2.set_data(x, y2)
 
@@ -284,8 +289,17 @@ class FDTD:
         freqs = np.fft.fftfreq(self.nt, d=self.dt)
         spectrum = np.fft.fft(self.Ez[:, ko])
         return freqs, spectrum
+    
+    def H_on_E_grid(self):
+        Ho = np.zeros(self.Ez.shape)
+        Ho[1:,1:] = 1/4*(self.Hy[1:,1:]+self.Hy[1:,:-1]+self.Hy[:-1,1:]+self.Hy[:-1,:-1])
+        Ho[:,0] = Ho[:,1]
+        Ho[:,-1] = Ho[:,-2]
+        return Ho
 
     def energy(self):
-        u_em = (self.Ez**2+self.Hy**2)/2
-        energy = simps(u_em, dx=self.delta)
+        Ho = self.H_on_E_grid()
+        t = np.linspace(0,self.T_max,self.nt).reshape(-1,1)
+        u_em = self.mu_0/2*(self.epsr_func(t)*self.Ez**2+Ho**2)
+        energy = simps(u_em,dx=self.delta)
         return energy
