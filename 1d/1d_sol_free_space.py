@@ -22,23 +22,25 @@ def H0_func(x):
 def epsr_func(t):
     return 1
 
-def error(delta,dt):
+def error(delta,dt,info=True):
     cfl = dt/delta
+    # cfl=1/2
     fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos,
                 epsr_func, E0_func=E0_func,H0_func=H0_func, boundary_condition="PEC", eps_0=1, mu_0=1, cfl=cfl)
     fdtd.run(False,False)
     x = np.linspace(0, L, fdtd.n_space)
     t = np.linspace(0, T_max, fdtd.nt)
-    print(x[-1])
-    print(t[-1])
-    print(f"{cfl = }")
-    print(f"nt = {fdtd.nt}")
-    print(f"n_space = {fdtd.n_space}")
-    print(f"δ = {fdtd.delta}")
-    print(f"{x[1]-x[0] = }")
-    print(f"dt = {fdtd.dt}")
-    print(f"{t[1]-t[0] = }")
-    print("==========================")
+    if info:
+        print(x[-1])
+        print(t[-1])
+        print(f"{cfl = }")
+        print(f"nt = {fdtd.nt}")
+        print(f"n_space = {fdtd.n_space}")
+        print(f"δ = {fdtd.delta}")
+        print(f"{x[1]-x[0] = }")
+        print(f"dt = {fdtd.dt}")
+        print(f"{t[1]-t[0] = }")
+        print("==========================")
     
     X, T = np.meshgrid(x, t)
     E_ext = np.sin(np.pi*X)*np.cos(np.pi/L*T)
@@ -47,8 +49,8 @@ def error(delta,dt):
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
     return (t,err,energy)
 
-delta = 1/10
-dt = 1e-2/8
+delta = 1/100
+dt = T_max/8000
 delta_vec = [delta,delta/2,delta/4,delta/8]
 err_vec = []
 energy_vec = []
@@ -94,7 +96,7 @@ plt.ylabel("$\mathcal{E}(t)$")
 plt.title("Numerical Energy")
 plt.show()
 
-err_energy = np.max(1/4-energy_vec,axis=1)
+err_energy = np.max(1/4-energy_vec,axis=1)*4
 plt.loglog(delta_vec,err_energy)
 plt.title("Differences in energy as $\delta$ gets smaller")
 plt.xlabel("$\delta$")

@@ -4,13 +4,15 @@ import matplotlib.pyplot as plt
 
 L = np.pi
 T_max = 10
-delta = 5e-3
+delta = np.pi/1000
 d = 1
 def source_func(t): return 0
+
 
 source_pos = L/2
 L_slab = L
 slab_pos = 0
+
 
 def epsR_func1(t):
     return (1+t)**2
@@ -43,11 +45,13 @@ def H0_func2(x):
 def E0_func2(x):
     return np.sin(x)
 
+
 def norm(F):
-    return np.max(np.max(np.abs(F),axis=1))
+    return np.max(np.linalg.norm(F, axis=1)*delta)
+
 
 fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func1,
-            E0_func1, H0_func1, J_func= J_func1, cfl=1/2, eps_0=1, mu_0=1, boundary_condition="PEC")
+            E0_func1, H0_func1, J_func=J_func1, cfl=1/2, eps_0=1, mu_0=1, boundary_condition="PEC")
 fdtd.run()
 n5 = int(5/fdtd.dt)
 x = np.linspace(0, L, fdtd.n_space)
@@ -61,14 +65,14 @@ plt.plot(x, fdtd.Ez[n5, :], label="E")
 plt.plot(x, E_ext[n5, :], label="E_ext")
 plt.legend()
 plt.title(
-    "Comparison between E and $E_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $1^{st}$ case")
+    "Comparison between E and $E_{ext}$ with $\delta = \pi\cdot10^{-3}$ for the $1^{st}$ case")
 plt.show()
 
 plt.plot(x, fdtd.Hy[n5, :], label="H")
 plt.plot(x, H_ext[n5, :], label="H_ext")
 plt.legend()
 plt.title(
-    "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $1^{st}$ case")
+    "Comparison between H and $H_{ext}$ with $\delta = \pi\cdot10^{-3}$ for the $1^{st}$ case")
 plt.show()
 err = norm(fdtd.Ez-E_ext)
 err2 = norm(fdtd.Hy-H_ext)
@@ -82,7 +86,7 @@ print(f"rel_err H = {rel_err2*100:.2f} %\n")
 
 
 fdtd2 = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func2,
-             E0_func2, H0_func2, J_func = J_func2, cfl=1/2, boundary_condition="PEC", eps_0=1, mu_0=1)
+             E0_func2, H0_func2, J_func=J_func2, cfl=1/2, boundary_condition="PEC", eps_0=1, mu_0=1)
 
 E_ext2 = np.cos(T)*np.sin(X)
 H_ext2 = np.sin(T)*np.cos(X)
@@ -94,14 +98,14 @@ fdtd2.run()
 plt.plot(x, fdtd2.Ez[n5, :], label="E")
 plt.plot(x, E_ext2[n5, :], label="E_ext")
 plt.title(
-    "Comparison between E and $E_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $2^{nd}$ case")
+    "Comparison between E and $E_{ext}$ with $\delta = \pi\cdot10^{-3}$ for the $2^{nd}$ case")
 plt.legend()
 plt.show()
 
 plt.plot(x, fdtd2.Hy[n5, :], label="H")
 plt.plot(x, H_ext2[n5, :], label="H_ext")
 plt.title(
-    "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $2^{nd}$ case")
+    "Comparison between H and $H_{ext}$ with $\delta = \pi\cdot10^{-3}$ for the $2^{nd}$ case")
 plt.legend()
 plt.show()
 err = norm(fdtd2.Ez-E_ext2)
