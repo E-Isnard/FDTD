@@ -123,13 +123,14 @@ def E0_func(x):
     return np.sin(x)
 
 def H0_func(x):
-    return 0
+    return -np.cos(x)/2
     
 def J_func(T,X):
-    return (np.exp(T)*(np.sin(T)-np.cos(T))-np.sin(T))*np.sin(X)
+    # return (np.exp(T)*(np.sin(T)-np.cos(T))-np.sin(T))*np.sin(X)
+    return 0*T
 
 def epsr_func(t):
-    return np.exp(t)
+    return (1+t)**2
 
 def error(delta,dt):
     cfl = dt/delta
@@ -151,15 +152,31 @@ def error(delta,dt):
     print("==========================")
     
     X, T = np.meshgrid(x, t)
+<<<<<<< HEAD
     E_ext = np.sin(X)*np.cos(T)
     H_ext = np.cos(X)*np.sin(T)
     # energy = fdtd.energy()
     # energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
+=======
+    # E_ext = np.sin(X)*np.cos(T)
+    # H_ext = np.cos(X)*np.sin(T)
+    E_ext = 1/np.sqrt((1+T)**3)*np.cos(np.sqrt(3)*np.log(1+T)/2)*np.sin(X)
+    H_ext = 1/(2*np.sqrt(1+T))*(-np.cos(np.sqrt(3)*np.log(1+T)/2) +
+                            np.sqrt(3)*np.sin(np.sqrt(3)*np.log(1+T)/2))*np.cos(X)
+    energy = fdtd.energy()
+    # energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
+    energy_ext = simps(1/2*(E_ext**2*fdtd.epsr_func(t.reshape(-1,1))+H_ext**2),dx=delta)
+>>>>>>> df9753e89f8b9bca7e968e60b54f864a708356d4
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
     return (t,err)
 
+<<<<<<< HEAD
 delta = np.pi/10
 dt = 1e-3
+=======
+delta = np.pi/100
+dt = T_max/8000
+>>>>>>> df9753e89f8b9bca7e968e60b54f864a708356d4
 delta_vec = [delta,delta/2,delta/4,delta/8]
 err_vec = []
 # energy_vec = []

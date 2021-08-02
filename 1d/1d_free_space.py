@@ -12,7 +12,7 @@ L_slab = L
 slab_pos = 0
 epsr_func = lambda t : 1
 
-fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func,boundary_condition="SM")
+fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func,boundary_condition="Mur")
 fdtd.run()
 fdtd.anim1d(-1,1)
 
