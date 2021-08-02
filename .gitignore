@@ -1,3 +1,4 @@
 .vscode/*
 pictures/*
 __pycache__/*
+*.mp4

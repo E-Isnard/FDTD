@@ -28,20 +28,24 @@ class FDTD:
         self.dt = self.cfl*self.delta/self.c
         self.n_space = int(L/delta)+1
         self.nt = int(T_max/self.dt)+1
-        shape = (self.nt,)+d*(self.n_space,)
-        self.Hy = np.zeros(shape)
+        E_shape = (self.nt,)+d*(self.n_space,)
+        H_shape = (self.nt,)+d*(self.n_space-1,)
+        self.Hy = np.zeros(H_shape)
         if self.Hy.nbytes/1024**3 > memory_limit:
             raise MemoryError(
                 f"Memory limit overrun ({self.Hy.nbytes/1024**3:.2f} GB > {memory_limit} GB)")
-        self.Hx = np.zeros(shape) if d != 1 else None
-        self.Ez = np.zeros(shape)
+        self.Hx = np.zeros(H_shape) if d != 1 else None
+        self.Ez = np.zeros(E_shape)
         if d == 1:
             x = np.linspace(0, L, self.n_space)
+            x2 = x[:-1]+self.delta/2
             t = np.linspace(0, T_max, self.nt)
+            t2 = t+self.dt/2
             X, T = np.meshgrid(x, t)
-            self.Hy[0] = H0_func(x)
+            X2, T2 = np.meshgrid(x, t2)
+            self.Hy[0] = H0_func(x2)
             self.Ez[0] = E0_func(x)
-            self.J = J_func(T, X)
+            self.J = J_func(T2, X2)
         if d == 2:
             x = np.linspace(0, L, self.n_space)
             y = np.linspace(0, L, self.n_space)
@@ -70,14 +74,16 @@ class FDTD:
             ks = int(self.source_pos/self.delta)
             if info:
                 start = perf_counter()
-            self.Hy[0,:-1]+=(self.Ez[0,1:]-self.Ez[0,:-1])*self.cfl/2
-            self.Hy[0,-1] = self.Hy[0,-2]
             for n in range(self.nt-1):
                 tn = n*self.dt
                 ca[k1:k2] = self.epsr_func(tn)/self.epsr_func(tn+self.dt)
                 cb[k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
+                self.Hy[n+1] = self.Hy[n]+self.cfl * \
+                    (self.Ez[n, 1:]-self.Ez[n, :-1])
 
-                self.Ez[n+1,1:-1] = ca[1:-1]*self.Ez[n,1:-1]+cb[1:-1]*(self.Hy[n,1:-1]-self.Hy[n,:-2]-self.J[n,1:-1]*self.delta)
+                self.Ez[n+1, 1:-1] = ca[1:-1]*self.Ez[n, 1:-1]+cb[1:-1] * \
+                    (self.Hy[n+1, 1:]-self.Hy[n+1, :-1] -
+                     self.J[n+1, 1:-1]*self.delta)
 
                 if self.boundary_condition == "Mur":
                     self.Ez[n+1, 0] = self.Ez[n, 1]+coeff_mur * \
@@ -88,15 +94,12 @@ class FDTD:
                 if self.boundary_condition == "PEC":
                     self.Ez[n+1, -1] = 0
                     self.Ez[n+1, 0] = 0
-                
-                if self.boundary_condition == "SM":
-                    self.Ez[n+1,0] = self.Hy[n,0]
-                    self.Ez[n+1,-1] = -self.Hy[n,-1]
 
+                if self.boundary_condition == "SM":
+                    self.Ez[n+1, 0] = self.Hy[n+1, 0]
+                    self.Ez[n+1, -1] = -self.Hy[n+1, -1]
 
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
-                self.Hy[n+1,:-1] = self.Hy[n,:-1]+self.cfl*(self.Ez[n+1,1:]-self.Ez[n+1,:-1])
-                self.Hy[n+1,-1] = self.Hy[n+1,-2]
                 if progress_bar:
                     progress(n, self.nt-1)
             if info:
@@ -145,14 +148,14 @@ class FDTD:
     def anim1d(self, y_low, y_high, interval=1e-3, save=False, show=True):
         if self.d != 1:
             raise ValueError("This method must be used only in 1d")
-        Ho = self.H_on_E_grid()
         k1 = int(self.slab_pos/self.delta)
         shift = int(self.L_slab/self.delta)
         k2 = k1+shift
         x = np.linspace(0, self.L, self.n_space)
+        x2 = x[:-1]+self.delta/2
         fig = plt.figure()
         line, = plt.plot(x, self.Ez[0])
-        line2, = plt.plot(x, Ho[0])
+        line2, = plt.plot(x2, self.Hy[0])
         plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
@@ -165,9 +168,9 @@ class FDTD:
 
         def animate(i):
             y1 = self.Ez[i].reshape((self.n_space, 1))
-            y2 = Ho[i].reshape((self.n_space, 1))
+            y2 = self.Hy[i].reshape((self.n_space-1, 1))
             line.set_data(x, y1)
-            line2.set_data(x, y2)
+            line2.set_data(x2, y2)
 
         frames = self.nt/5 if save else self.nt
         ani = animation.FuncAnimation(
@@ -289,17 +292,16 @@ class FDTD:
         freqs = np.fft.fftfreq(self.nt, d=self.dt)
         spectrum = np.fft.fft(self.Ez[:, ko])
         return freqs, spectrum
-    
+
     def H_on_E_grid(self):
-        Ho = np.zeros(self.Ez.shape)
-        Ho[1:,1:] = 1/4*(self.Hy[1:,1:]+self.Hy[1:,:-1]+self.Hy[:-1,1:]+self.Hy[:-1,:-1])
-        Ho[:,0] = Ho[:,1]
-        Ho[:,-1] = Ho[:,-2]
+        Ho = np.zeros(self.Hy.shape)
+        Ho[1:, 1:] = 1/4*(self.Hy[1:, 1:]+self.Hy[1:, :-1] +
+                          self.Hy[:-1, 1:]+self.Hy[:-1, :-1])
         return Ho
 
     def energy(self):
-        Ho = self.H_on_E_grid()
-        t = np.linspace(0,self.T_max,self.nt).reshape(-1,1)
-        u_em = self.mu_0/2*(self.epsr_func(t)*self.Ez**2+Ho**2)
-        energy = simps(u_em,dx=self.delta)
+        t = np.linspace(0, self.T_max, self.nt).reshape(-1, 1)
+        Hm = (self.Hy[1:]-self.Hy[:-1])/2
+        u_em = self.mu_0/2*(self.epsr_func(t)*self.Ez**2+Hm**2)
+        energy = simps(u_em, dx=self.delta)
         return energy

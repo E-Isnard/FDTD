@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 L = np.pi
 T_max = 10
-delta = 5e-3
+delta = L/1000
 d = 1
 def source_func(t): return 0
 
@@ -51,11 +51,14 @@ fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_
 fdtd.run()
 n5 = int(5/fdtd.dt)
 x = np.linspace(0, L, fdtd.n_space)
+x2 = x[:-1]+delta/2
 t = np.linspace(0, T_max, fdtd.nt)
+t2 = t + fdtd.dt/2
 X, T = np.meshgrid(x, t)
+X2, T2 = np.meshgrid(x, t2)
 E_ext = 1/np.sqrt((1+T)**3)*np.cos(np.sqrt(3)*np.log(1+T)/2)*np.sin(X)
-H_ext = 1/(2*np.sqrt(1+T))*(-np.cos(np.sqrt(3)*np.log(1+T)/2) +
-                            np.sqrt(3)*np.sin(np.sqrt(3)*np.log(1+T)/2))*np.cos(X)
+H_ext = 1/(2*np.sqrt(1+T2))*(-np.cos(np.sqrt(3)*np.log(1+T2)/2) +
+                            np.sqrt(3)*np.sin(np.sqrt(3)*np.log(1+T2)/2))*np.cos(X2)
 
 plt.plot(x, fdtd.Ez[n5, :], label="E")
 plt.plot(x, E_ext[n5, :], label="E_ext")
@@ -64,8 +67,8 @@ plt.title(
     "Comparison between E and $E_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $1^{st}$ case")
 plt.show()
 
-plt.plot(x, fdtd.Hy[n5, :], label="H")
-plt.plot(x, H_ext[n5, :], label="H_ext")
+plt.plot(x2, fdtd.Hy[n5, :], label="H")
+plt.plot(x2, H_ext[n5, :], label="H_ext")
 plt.legend()
 plt.title(
     "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $1^{st}$ case")
@@ -85,7 +88,7 @@ fdtd2 = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR
              E0_func2, H0_func2, J_func = J_func2, cfl=1/2, boundary_condition="PEC", eps_0=1, mu_0=1)
 
 E_ext2 = np.cos(T)*np.sin(X)
-H_ext2 = np.sin(T)*np.cos(X)
+H_ext2 = np.sin(T2)*np.cos(X2)
 
 
 fdtd2.run()
@@ -98,8 +101,8 @@ plt.title(
 plt.legend()
 plt.show()
 
-plt.plot(x, fdtd2.Hy[n5, :], label="H")
-plt.plot(x, H_ext2[n5, :], label="H_ext")
+plt.plot(x2, fdtd2.Hy[n5, :], label="H")
+plt.plot(x2, H_ext2[n5, :], label="H_ext")
 plt.title(
     "Comparison between H and $H_{ext}$ with $\delta = 5\cdot10^{-3}$ for the $2^{nd}$ case")
 plt.legend()

@@ -110,7 +110,7 @@ from sklearn.linear_model import LinearRegression
 from scipy.integrate import simps
 
 L = np.pi
-T_max = 10
+T_max = 20
 d = 1
 
 def source_func(t): return 0
@@ -134,8 +134,9 @@ def epsr_func(t):
 def error(delta,dt):
     cfl = dt/delta
     fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos,
-                epsr_func, E0_func=E0_func,H0_func=H0_func,J_func=J_func, boundary_condition="PEC", eps_0=1, mu_0=1, cfl=cfl)
+                epsr_func, E0_func=E0_func,H0_func=H0_func,J_func=J_func, boundary_condition="PEC", eps_0=1, mu_0=1, cfl=cfl,memory_limit=0.7)
     fdtd.run(False,False)
+    # fdtd.anim1d(-3/2,3/2)
     x = np.linspace(0, L, fdtd.n_space)
     t = np.linspace(0, T_max, fdtd.nt)
     print(x[-1])
@@ -152,26 +153,26 @@ def error(delta,dt):
     X, T = np.meshgrid(x, t)
     E_ext = np.sin(X)*np.cos(T)
     H_ext = np.cos(X)*np.sin(T)
-    energy = fdtd.energy()
-    energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
+    # energy = fdtd.energy()
+    # energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
-    return (t,err,energy,energy_ext)
+    return (t,err)
 
 delta = np.pi/10
-dt = 1e-2
+dt = 1e-3
 delta_vec = [delta,delta/2,delta/4,delta/8]
 err_vec = []
-energy_vec = []
+# energy_vec = []
 t_vec = []
 for i,delta in enumerate(delta_vec):
-    t,err,energy,energy_ext = error(delta,dt)
+    t,err = error(delta,dt)
     err_vec.append(err)
-    energy_vec.append(energy)
+    # energy_vec.append(energy)
     t_vec.append(t)
 
 err_vec = np.array(err_vec)
 delta_vec = np.array(delta_vec)
-energy_vec = np.array(energy_vec)
+# energy_vec = np.array(energy_vec)
 plt.plot(t_vec[0], err_vec[0], label="L2 error w/ $\delta$")
 plt.plot(t_vec[1], err_vec[1], label="L2 error2 w/ $\delta/2$")
 plt.plot(t_vec[2], err_vec[2], label="L2 error3 w/ $\delta/4$")
@@ -192,26 +193,27 @@ m = LinearRegression()
 m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_max))
 r = m.coef_[0]
 print(f"{r = }")
-plt.plot(t_vec[0], energy_vec[0], label="$\mathcal{E}_{\delta}$")
-plt.plot(t_vec[1], energy_vec[1], label="$\mathcal{E}_{\delta/2}$")
-plt.plot(t_vec[2], energy_vec[2], label="$\mathcal{E}_{\delta/4}$")
-plt.plot(t_vec[3], energy_vec[3], label="$\mathcal{E}_{\delta/8}$")
-plt.plot(t_vec[-1],energy_ext , label="$\mathcal{E}_{ext}$")
-plt.legend()
-plt.xlabel("t")
-plt.ylabel("$\mathcal{E}(t)$")
-plt.title("Numerical Energy")
-plt.show()
 
-err_energy = np.max(np.abs(energy_ext-energy_vec),axis=1)
-plt.loglog(delta_vec,err_energy)
-plt.title("Differences in energy as $\delta$ gets smaller")
-plt.xlabel("$\delta$")
-plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
-plt.grid(ls="--",which="both")
+# plt.plot(t_vec[0], energy_vec[0], label="$\mathcal{E}_{\delta}$")
+# plt.plot(t_vec[1], energy_vec[1], label="$\mathcal{E}_{\delta/2}$")
+# plt.plot(t_vec[2], energy_vec[2], label="$\mathcal{E}_{\delta/4}$")
+# plt.plot(t_vec[3], energy_vec[3], label="$\mathcal{E}_{\delta/8}$")
+# plt.plot(t_vec[-1],energy_ext , label="$\mathcal{E}_{ext}$")
+# plt.legend()
+# plt.xlabel("t")
+# plt.ylabel("$\mathcal{E}(t)$")
+# plt.title("Numerical Energy")
+# plt.show()
 
-plt.show()
-m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_energy))
-r_energy = m.coef_[0]
-print(f"{r_energy = }")
+# err_energy = np.max(np.abs(energy_ext-energy_vec),axis=1)
+# plt.loglog(delta_vec,err_energy)
+# plt.title("Differences in energy as $\delta$ gets smaller")
+# plt.xlabel("$\delta$")
+# plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
+# plt.grid(ls="--",which="both")
+
+# plt.show()
+# m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_energy))
+# r_energy = m.coef_[0]
+# print(f"{r_energy = }")
 
