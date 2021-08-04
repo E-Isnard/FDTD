@@ -17,7 +17,7 @@ def E0_func(x):
     return np.sin(np.pi*x)
 
 def H0_func(x):
-    return 0
+    return np.cos(np.pi*x)*np.sin(-np.pi*dt/2)
 
 def epsr_func(t):
     return 1
@@ -29,6 +29,7 @@ def error(delta,dt,info=True):
                 epsr_func, E0_func=E0_func,H0_func=H0_func, boundary_condition="PEC", eps_0=1, mu_0=1, cfl=cfl)
     fdtd.run(False,False)
     x = np.linspace(0, L, fdtd.n_space)
+    t = np.linspace(0, T_max, fdtd.nt)
     t = np.linspace(0, T_max, fdtd.nt)
     if info:
         print(x[-1])
@@ -43,14 +44,14 @@ def error(delta,dt,info=True):
         print("==========================")
     
     X, T = np.meshgrid(x, t)
-    E_ext = np.sin(np.pi*X)*np.cos(np.pi/L*T)
-    H_ext = np.cos(np.pi*X)*np.sin(np.pi/L*T)
+    E_ext = np.sin(np.pi*X)*np.cos(np.pi*T)
+    # H_ext = np.cos(np.pi*X)*np.sin(np.pi/L*T)
     # energy = fdtd.energy()
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
     return (t,err)
 
-delta = 1/100
-dt = T_max/8000
+delta = L/5
+dt = T_max/100000
 delta_vec = [delta,delta/2,delta/4,delta/8]
 err_vec = []
 # energy_vec = []
@@ -96,21 +97,12 @@ print(f"{r = }")
 # plt.title("Numerical Energy")
 # plt.show()
 
-<<<<<<< HEAD
 # err_energy = np.max(1/4-energy_vec,axis=1)
 # plt.loglog(delta_vec,err_energy)
 # plt.title("Differences in energy as $\delta$ gets smaller")
 # plt.xlabel("$\delta$")
 # plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
 # plt.grid(ls="--",which="both")
-=======
-err_energy = np.max(1/4-energy_vec,axis=1)*4
-plt.loglog(delta_vec,err_energy)
-plt.title("Differences in energy as $\delta$ gets smaller")
-plt.xlabel("$\delta$")
-plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
-plt.grid(ls="--",which="both")
->>>>>>> df9753e89f8b9bca7e968e60b54f864a708356d4
 
 # plt.show()
 # m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_energy))

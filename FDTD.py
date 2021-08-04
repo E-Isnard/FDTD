@@ -40,12 +40,13 @@ class FDTD:
             x = np.linspace(0, L, self.n_space)
             x2 = x[:-1]+self.delta/2
             t = np.linspace(0, T_max, self.nt)
-            t2 = t+self.dt/2
+            # t2 = t+self.dt/2
             X, T = np.meshgrid(x, t)
-            X2, T2 = np.meshgrid(x, t2)
+            # X2, T2 = np.meshgrid(x, t2)
             self.Hy[0] = H0_func(x2)
             self.Ez[0] = E0_func(x)
-            self.J = J_func(T2, X2)
+            # self.Hy[0] = self.Hy[0]+self.cfl/2*(self.Ez[0,1:]-self.Ez[0,:-1])
+            self.J = J_func(T, X)
         if d == 2:
             x = np.linspace(0, L, self.n_space)
             y = np.linspace(0, L, self.n_space)

@@ -110,7 +110,7 @@ from sklearn.linear_model import LinearRegression
 from scipy.integrate import simps
 
 L = np.pi
-T_max = 20
+T_max = 10
 d = 1
 
 def source_func(t): return 0
@@ -123,14 +123,13 @@ def E0_func(x):
     return np.sin(x)
 
 def H0_func(x):
-    return -np.cos(x)/2
+    return np.cos(x)*np.sin(-dt/2)
     
 def J_func(T,X):
-    # return (np.exp(T)*(np.sin(T)-np.cos(T))-np.sin(T))*np.sin(X)
-    return 0*T
+    return (np.exp(T)*(np.sin(T)-np.cos(T))-np.sin(T))*np.sin(X)
 
 def epsr_func(t):
-    return (1+t)**2
+    return np.exp(t)
 
 def error(delta,dt):
     cfl = dt/delta
@@ -159,9 +158,10 @@ def error(delta,dt):
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
     return (t,err)
 
-delta = np.pi/10
-dt = 1e-3
+delta = L/5
+dt = T_max/100000
 delta_vec = [delta,delta/2,delta/4,delta/8]
+# delta_vec = np.linspace(delta,delta/8,num=100)
 err_vec = []
 # energy_vec = []
 t_vec = []
