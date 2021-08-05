@@ -16,9 +16,9 @@ fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func,bou
 fdtd.run()
 fdtd.anim1d(-1,1)
 
-# energy = fdtd.energy()
-# t = np.linspace(0,T_max,fdtd.nt)
+energy = fdtd.energy()
+t = np.linspace(0,T_max,fdtd.nt)
 
-# plt.plot(t,energy)
-# plt.title("$\mathcal{E}(t)$")
-# plt.show()
+plt.plot(t,energy)
+plt.title("$\mathcal{E}(t)$")
+plt.show()

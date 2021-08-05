@@ -26,28 +26,33 @@ L0 = (4*np.pi*v0)/(wm*np.sqrt(4-b**2))
 L_slab = 3e-3
 slab_pos = L/2-L_slab
 
+def f_Liu_func(L_slab):
+    slab_pos = L/2-L_slab
+    fdtd = FDTD(L, delta, T_max, d, source_func1,
+                source_pos, L_slab, slab_pos, epsr_func)
+
+    fdtd.run(progress_bar=False, info=False)
+    # fdtd.anim1d(-1,1)
+    # fdtd.plotE1d(slab_pos+L_slab+2*delta)
+
+    E1 = fdtd.Ez
+
+    fdtd2 = FDTD(L, delta, T_max, d, source_func2,
+                source_pos, L_slab, slab_pos, epsr_func)
+
+    fdtd2.run(progress_bar=False, info=False)
+
+    E2 = fdtd2.Ez
+    ko = int((slab_pos+L_slab+2*delta)/delta)
+    phi = np.arctan2(E1[:, ko], E2[:, ko])
+    f_Liu = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*fdtd.dt*2*np.pi)
+    f_Liu = median_filter(f_Liu, size=10)
+    return f_Liu
+
+f_Liu = f_Liu_func(L_slab)
+
 fdtd = FDTD(L, delta, T_max, d, source_func1,
-            source_pos, L_slab, slab_pos, epsr_func)
-
-fdtd.run(progress_bar=False, info=False)
-# fdtd.anim1d(-1,1)
-# fdtd.plotE1d(slab_pos+L_slab+2*delta)
-
-E1 = fdtd.Ez
-
-fdtd2 = FDTD(L, delta, T_max, d, source_func2,
-             source_pos, L_slab, slab_pos, epsr_func)
-
-fdtd2.run(progress_bar=False, info=False)
-
-E2 = fdtd2.Ez
-ko = int((slab_pos+L_slab+2*delta)/delta)
-phi = np.arctan2(E1[:, ko], E2[:, ko])
-f_Liu = (phi[:-4]-8*phi[1:-3]+8*phi[3:-1]-phi[4:])/(12*fdtd.dt*2*np.pi)
-f_Liu = median_filter(f_Liu, size=10)
-# phi_hilbert = np.unwrap(np.angle(hilbert(E1[:,ko])))
-# f_hilbert = (1/(np.pi*2))*np.gradient(phi_hilbert,fdtd.dt)
-fdtd.source_func = source_func1
+                source_pos, L_slab, slab_pos, epsr_func)
 fdtd.run(False, False)
 f_hilbert = fdtd.instant_freq((slab_pos+L_slab+2*delta))
 n2 = int(2e-9/fdtd.dt)
@@ -84,7 +89,8 @@ plt.show()
 
 
 swings_ext = []
-swings_fdtd = []
+swings_hilbert = []
+swings_Liu = []
 L_vec = np.linspace(0, 350e-3, 100)
 t = np.linspace(0, T_max, fdtd.nt)
 
@@ -97,16 +103,20 @@ for i, L_slab in enumerate(L_vec):
     fdtd.L_slab = L_slab
     fdtd.slab_pos = slab_pos
     fdtd.run(False, False)
-    f_fdtd = fdtd.instant_freq(xo)
+    f_hilbert = fdtd.instant_freq(xo)
     f_ext = f_ext_func(L_slab)
+    f_Liu = f_Liu_func(L_slab)
     swings_ext.append(np.max(f_ext[n2:n9])-np.min(f_ext[n2:n9]))
-    swings_fdtd.append(np.max(f_fdtd[n2:n9])-np.min(f_fdtd[n2:n9]))
+    swings_hilbert.append(np.max(f_hilbert[n2:n9])-np.min(f_hilbert[n2:n9]))
+    swings_Liu.append(np.max(f_Liu[n2:n9])-np.min(f_Liu[n2:n9]))
     progress(i, 100)
 
-swings_fdtd = np.array(swings_fdtd)
+swings_hilbert = np.array(swings_hilbert)
 swings_ext = np.array(swings_ext)
+swings_Liu = np.array(swings_Liu)
 plt.plot(L_vec*1e3, swings_ext/1e9, label="Exact freq swings")
-plt.plot(L_vec*1e3, swings_fdtd/1e9, label="FDTD freq swings")
+plt.plot(L_vec*1e3, swings_hilbert/1e9, label="Hilbert freq swings")
+plt.plot(L_vec*1e3, swings_Liu/1e9, label="Liu freq swings")
 plt.legend()
 plt.xlabel("Width of slab [mm]")
 plt.ylabel("Swing of instantaneous frequency [GHz]")

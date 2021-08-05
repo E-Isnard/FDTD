@@ -123,7 +123,7 @@ def E0_func(x):
     return np.sin(x)
 
 def H0_func(x):
-    return np.cos(x)*np.sin(-dt/2)
+    return np.cos(x)*np.sin(dt/2)
     
 def J_func(T,X):
     return (np.exp(T)*(np.sin(T)-np.cos(T))-np.sin(T))*np.sin(X)
@@ -138,7 +138,13 @@ def error(delta,dt):
     fdtd.run(False,False)
     # fdtd.anim1d(-3/2,3/2)
     x = np.linspace(0, L, fdtd.n_space)
+    x2 = x[:-1]+fdtd.delta/2
     t = np.linspace(0, T_max, fdtd.nt)
+    t2 = t-fdtd.dt/2
+    X, T = np.meshgrid(x, t)
+    X2, T2 = np.meshgrid(x2, t2)
+    E_ext = np.sin(X)*np.cos(T)
+    H_ext = np.cos(X2)*np.sin(T2)
     print(x[-1])
     print(t[-1])
     print(f"{cfl = }")
@@ -148,11 +154,10 @@ def error(delta,dt):
     print(f"{x[1]-x[0] = }")
     print(f"dt = {fdtd.dt}")
     print(f"{t[1]-t[0] = }")
+    print(f"||E_ext(0)-E(0)|| = {np.linalg.norm(E_ext[0]-fdtd.Ez[0])}")
+    print(f"||H_ext(0)-H(0)|| = {np.linalg.norm(H_ext[0]-fdtd.Hy[0])}")
     print("==========================")
     
-    X, T = np.meshgrid(x, t)
-    E_ext = np.sin(X)*np.cos(T)
-    H_ext = np.cos(X)*np.sin(T)
     # energy = fdtd.energy()
     # energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)

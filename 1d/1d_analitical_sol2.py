@@ -2,11 +2,12 @@ from FDTD import FDTD
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import jv
+# jv(n,x) = Bessel Function of 1st kind of order n
 L = np.pi
-T_max = 10
-delta = L/1000
+T_max = 1
+delta = L/100
 d = 1
-cfl=1/2
+cfl=1
 dt = cfl*delta
 def source_func(t): return 0
 
@@ -20,7 +21,7 @@ def f(t):
     return (jv(1,2*np.sqrt(1+t))/np.sqrt(1+t))/jv(1,2)
 
 def g(t):
-    return (jv(0,2)-jv(0,2*np.sqrt(1+t)))/jv(1,2)
+    return (-jv(0,2*np.sqrt(1+t)))/jv(1,2)
 
 
 def epsR_func1(t):
@@ -32,17 +33,16 @@ def J_func1(T, X):
 
 
 def H0_func1(x):
-    return np.cos(x)*g(-dt/2)
+    return np.cos(x)*g(dt/2)
 
 
 def E0_func1(x):
-    return np.sin(x)
+    return np.sin(x)*f(0)
 
 n5 = -1
 def norm(F):
     # return np.max(np.linalg.norm(F, axis=1)*delta)
     return np.linalg.norm(F[n5])
-
 
 fdtd = FDTD(L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsR_func1,
             E0_func1, H0_func1, J_func=J_func1, eps_0=1, mu_0=1, boundary_condition="PEC",cfl=cfl)
@@ -51,7 +51,7 @@ fdtd.run()
 x = np.linspace(0, L, fdtd.n_space)
 x2 = x[:-1]+fdtd.delta/2
 t = np.linspace(0, T_max, fdtd.nt)
-t2 = t - fdtd.dt/2
+t2 = t-dt/2
 X, T = np.meshgrid(x, t)
 X2, T2 = np.meshgrid(x2, t2)
 
