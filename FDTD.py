@@ -79,11 +79,9 @@ class FDTD:
                 tn = n*self.dt
                 ca[k1:k2] = self.epsr_func(tn)/self.epsr_func(tn+self.dt)
                 cb[k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
-                self.Hy[n+1] = self.Hy[n]+self.cfl * \
-                    (self.Ez[n, 1:]-self.Ez[n, :-1])
 
                 self.Ez[n+1, 1:-1] = ca[1:-1]*self.Ez[n, 1:-1]+cb[1:-1] * \
-                    (self.Hy[n+1, 1:]-self.Hy[n+1, :-1] -
+                    (self.Hy[n, 1:]-self.Hy[n, :-1] -
                      self.J[n+1, 1:-1]*self.delta)
 
                 if self.boundary_condition == "Mur":
@@ -101,6 +99,10 @@ class FDTD:
                     self.Ez[n+1, -1] = -self.Hy[n+1, -1]
 
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
+
+                self.Hy[n+1] = self.Hy[n]+self.cfl * \
+                    (self.Ez[n+1, 1:]-self.Ez[n+1, :-1])
+
                 if progress_bar:
                     progress(n, self.nt-1)
             if info:
@@ -301,8 +303,10 @@ class FDTD:
         return Ho
 
     def energy(self):
+        u_em = np.zeros(self.Hy.shape)
         t = np.linspace(0, self.T_max, self.nt).reshape(-1, 1)
-        Hm = (self.Hy[1:]-self.Hy[:-1])/2
-        u_em = self.mu_0/2*(self.epsr_func(t)*self.Ez**2+Hm**2)
+        # u_em[:-1] = self.mu_0/2*(self.epsr_func(t)[:-1]*self.Ez[:-1]**2+((self.Hy[1:]-self.Hy[:-1])/2)**2)
+        u_em[:-1] = 1
+        u_em[-1] = self.mu_0/2*(self.epsr_func(t[-1])*self.Ez[-1]**2+self.Hy[-1]**2)
         energy = simps(u_em, dx=self.delta)
         return energy
