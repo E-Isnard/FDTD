@@ -95,8 +95,8 @@ class FDTD:
                     self.Ez[n+1, 0] = 0
 
                 if self.boundary_condition == "SM":
-                    self.Ez[n+1, 0] = self.Hy[n+1, 0]
-                    self.Ez[n+1, -1] = -self.Hy[n+1, -1]
+                    self.Ez[n+1, 0] = self.Hy[n, 0]
+                    self.Ez[n+1, -1] = -self.Hy[n, -1]
 
                 self.Ez[n+1, ks] += self.source_func(tn+self.dt)
 
@@ -156,6 +156,7 @@ class FDTD:
         k2 = k1+shift
         x = np.linspace(0, self.L, self.n_space)
         x2 = x[:-1]+self.delta/2
+        t = np.linspace(0,self.T_max,self.nt)
         fig = plt.figure()
         line, = plt.plot(x, self.Ez[0])
         line2, = plt.plot(x2, self.Hy[0])
@@ -170,6 +171,7 @@ class FDTD:
         plt.xlim(0, self.L)
 
         def animate(i):
+            plt.title("Propagation of $\\tilde{E}_z$ and $H_y$ at time")
             y1 = self.Ez[i].reshape((self.n_space, 1))
             y2 = self.Hy[i].reshape((self.n_space-1, 1))
             line.set_data(x, y1)
@@ -295,7 +297,7 @@ class FDTD:
         freqs = np.fft.fftfreq(self.nt, d=self.dt)
         spectrum = np.fft.fft(self.Ez[:, ko])
         return freqs, spectrum
-
+        
     def H_on_E_grid(self):
         Ho = np.zeros(self.Hy.shape)
         Ho[1:, 1:] = 1/4*(self.Hy[1:, 1:]+self.Hy[1:, :-1] +
@@ -303,10 +305,8 @@ class FDTD:
         return Ho
 
     def energy(self):
-        u_em = np.zeros(self.Hy.shape)
-        t = np.linspace(0, self.T_max, self.nt).reshape(-1, 1)
-        # u_em[:-1] = self.mu_0/2*(self.epsr_func(t)[:-1]*self.Ez[:-1]**2+((self.Hy[1:]-self.Hy[:-1])/2)**2)
-        u_em[:-1] = 1
-        u_em[-1] = self.mu_0/2*(self.epsr_func(t[-1])*self.Ez[-1]**2+self.Hy[-1]**2)
-        energy = simps(u_em, dx=self.delta)
-        return energy
+        t = np.linspace(0, self.T_max, self.nt)[1:]
+        e_H = (np.einsum("ij,ij->i",self.Hy[1:],self.Hy[:-1]))*self.delta
+        e_E = (np.linalg.norm(self.Ez[1:],axis=1)**2)*self.delta*self.epsr_func(t)
+
+        return 1/2*(e_H+e_E)

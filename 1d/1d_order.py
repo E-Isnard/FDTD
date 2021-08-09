@@ -140,7 +140,7 @@ def error(delta,dt):
     x = np.linspace(0, L, fdtd.n_space)
     x2 = x[:-1]+fdtd.delta/2
     t = np.linspace(0, T_max, fdtd.nt)
-    t2 = t-fdtd.dt/2
+    t2 = t+fdtd.dt/2
     X, T = np.meshgrid(x, t)
     X2, T2 = np.meshgrid(x2, t2)
     E_ext = np.sin(X)*np.cos(T)
@@ -158,22 +158,22 @@ def error(delta,dt):
     print(f"||H_ext(0)-H(0)|| = {np.linalg.norm(H_ext[0]-fdtd.Hy[0])}")
     print("==========================")
     
-    # energy = fdtd.energy()
-    # energy_ext = np.pi/4*(np.exp(t)*np.cos(t)**2+np.sin(t)**2)
+    energy = fdtd.energy()
+    energy_ext = np.pi/4*(np.exp(t[1:])*np.cos(t[1:])**2+np.sin(t[1:])**2)
     err = np.linalg.norm(E_ext-fdtd.Ez, axis=1)*np.sqrt(delta)
-    return (t,err)
+    return (t,err,energy,energy_ext)
 
 delta = L/5
 dt = T_max/100000
 delta_vec = [delta,delta/2,delta/4,delta/8]
 # delta_vec = np.linspace(delta,delta/8,num=100)
 err_vec = []
-# energy_vec = []
+energy_vec = []
 t_vec = []
 for i,delta in enumerate(delta_vec):
-    t,err = error(delta,dt)
+    t,err,energy,energy_ext = error(delta,dt)
     err_vec.append(err)
-    # energy_vec.append(energy)
+    energy_vec.append(energy)
     t_vec.append(t)
 
 err_vec = np.array(err_vec)
@@ -200,26 +200,26 @@ m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_max))
 r = m.coef_[0]
 print(f"{r = }")
 
-# plt.plot(t_vec[0], energy_vec[0], label="$\mathcal{E}_{\delta}$")
-# plt.plot(t_vec[1], energy_vec[1], label="$\mathcal{E}_{\delta/2}$")
-# plt.plot(t_vec[2], energy_vec[2], label="$\mathcal{E}_{\delta/4}$")
-# plt.plot(t_vec[3], energy_vec[3], label="$\mathcal{E}_{\delta/8}$")
-# plt.plot(t_vec[-1],energy_ext , label="$\mathcal{E}_{ext}$")
-# plt.legend()
-# plt.xlabel("t")
-# plt.ylabel("$\mathcal{E}(t)$")
-# plt.title("Numerical Energy")
-# plt.show()
+plt.plot(t_vec[0][1:], energy_vec[0], label="$\mathcal{E}_{\delta}$")
+plt.plot(t_vec[1][1:], energy_vec[1], label="$\mathcal{E}_{\delta/2}$")
+plt.plot(t_vec[2][1:], energy_vec[2], label="$\mathcal{E}_{\delta/4}$")
+plt.plot(t_vec[3][1:], energy_vec[3], label="$\mathcal{E}_{\delta/8}$")
+plt.plot(t_vec[-1][1:],energy_ext , label="$\mathcal{E}_{ext}$")
+plt.legend()
+plt.xlabel("t")
+plt.ylabel("$\mathcal{E}(t)$")
+plt.title("Numerical Energy")
+plt.show()
 
-# err_energy = np.max(np.abs(energy_ext-energy_vec),axis=1)
-# plt.loglog(delta_vec,err_energy)
-# plt.title("Differences in energy as $\delta$ gets smaller")
-# plt.xlabel("$\delta$")
-# plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
-# plt.grid(ls="--",which="both")
+err_energy = np.max(np.abs(energy_ext-energy_vec),axis=1)
+plt.loglog(delta_vec,err_energy)
+plt.title("Differences in energy as $\delta$ gets smaller")
+plt.xlabel("$\delta$")
+plt.ylabel("$\max|\mathcal{E}-\mathcal{E}_{ext}|$")
+plt.grid(ls="--",which="both")
 
-# plt.show()
-# m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_energy))
-# r_energy = m.coef_[0]
-# print(f"{r_energy = }")
+plt.show()
+m.fit(np.log(delta_vec.reshape(-1,1)),np.log(err_energy))
+r_energy = m.coef_[0]
+print(f"{r_energy = }")
 
