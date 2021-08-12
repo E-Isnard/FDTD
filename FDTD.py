@@ -160,7 +160,7 @@ class FDTD:
         fig = plt.figure()
         line, = plt.plot(x, self.Ez[0])
         line2, = plt.plot(x2, self.Hy[0])
-        plt.title("Propagation of $\\tilde{E}_z$ and $H_y$")
+        plt.title("Propagation of $\\tilde{E}_z$ and $H_y at $"+f"{t[0]:.2f}")
         plt.xlabel("x [m]")
         plt.ylabel("Amplitude [A/m]")
         plt.legend(["$\\tilde{E}_z$", "$H_y$"])
@@ -171,7 +171,7 @@ class FDTD:
         plt.xlim(0, self.L)
 
         def animate(i):
-            plt.title("Propagation of $\\tilde{E}_z$ and $H_y$ at time")
+            plt.title("Propagation of $\\tilde{E}_z$ and $H_y$ at time "+f"{t[i]:.2f}")
             y1 = self.Ez[i].reshape((self.n_space, 1))
             y2 = self.Hy[i].reshape((self.n_space-1, 1))
             line.set_data(x, y1)
