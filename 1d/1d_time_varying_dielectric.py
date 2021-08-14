@@ -1,4 +1,4 @@
-from FDTD import FDTD,progress
+from fdtd import FDTD,progress
 import numpy as np
 import matplotlib.pyplot as plt
 d=1

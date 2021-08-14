@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 from time import perf_counter
 from matplotlib import animation
 from scipy.signal.signaltools import hilbert
-from scipy.integrate import simps
-
 
 def progress(i, n):
     i += 1
@@ -14,7 +12,12 @@ def progress(i, n):
 
 
 class FDTD:
+    
+
     def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, E0_func=lambda *xi: 0, H0_func=lambda *xi: 0, H0_func2=lambda *xi: 0, J_func=lambda T, *Xi: np.zeros(T.shape), cfl=None, boundary_condition="Mur", eps_0=8.85418782e-12, mu_0=4*np.pi*1e-7, memory_limit=1):
+        """
+        Main class of FDTD
+        """
         if d != 1 and d != 2:
             raise ValueError("Dimension should be 1 or 2.")
         self.eps_0 = eps_0
@@ -65,6 +68,11 @@ class FDTD:
         self.boundary_condition = boundary_condition
 
     def run(self, progress_bar=True, info=True):
+        """
+        Compute the fields
+        :param bool progress_bar:   show progress bar or not
+        :param bool info:           show info or not        
+        """
         ca = np.ones(self.d*(self.n_space,))
         cb = self.cfl*np.ones(self.d*(self.n_space,))
         k1 = int(self.slab_pos/self.delta)
@@ -156,7 +164,7 @@ class FDTD:
         k2 = k1+shift
         x = np.linspace(0, self.L, self.n_space)
         x2 = x[:-1]+self.delta/2
-        t = np.linspace(0,self.T_max,self.nt)
+        t = np.linspace(0, self.T_max, self.nt)
         fig = plt.figure()
         line, = plt.plot(x, self.Ez[0])
         line2, = plt.plot(x2, self.Hy[0])
@@ -171,7 +179,8 @@ class FDTD:
         plt.xlim(0, self.L)
 
         def animate(i):
-            plt.title("Propagation of $\\tilde{E}_z$ and $H_y$ at time "+f"{t[i]:.2f}")
+            plt.title(
+                "Propagation of $\\tilde{E}_z$ and $H_y$ at time "+f"{t[i]:.2f}")
             y1 = self.Ez[i].reshape((self.n_space, 1))
             y2 = self.Hy[i].reshape((self.n_space-1, 1))
             line.set_data(x, y1)
@@ -297,7 +306,7 @@ class FDTD:
         freqs = np.fft.fftfreq(self.nt, d=self.dt)
         spectrum = np.fft.fft(self.Ez[:, ko])
         return freqs, spectrum
-        
+
     def H_on_E_grid(self):
         Ho = np.zeros(self.Hy.shape)
         Ho[1:, 1:] = 1/4*(self.Hy[1:, 1:]+self.Hy[1:, :-1] +
@@ -306,7 +315,8 @@ class FDTD:
 
     def energy(self):
         t = np.linspace(0, self.T_max, self.nt)[1:]
-        e_H = (np.einsum("ij,ij->i",self.Hy[1:],self.Hy[:-1]))*self.delta
-        e_E = (np.linalg.norm(self.Ez[1:],axis=1)**2)*self.delta*self.epsr_func(t)
+        e_H = (np.einsum("ij,ij->i", self.Hy[1:], self.Hy[:-1]))*self.delta
+        e_E = (np.linalg.norm(self.Ez[1:], axis=1)
+               ** 2)*self.delta*self.epsr_func(t)
 
         return 1/2*(e_H+e_E)

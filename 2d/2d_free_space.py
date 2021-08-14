@@ -1,4 +1,4 @@
-from FDTD import FDTD
+from fdtd import FDTD
 import numpy as np
 
 f = 1e9

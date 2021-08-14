@@ -1,4 +1,4 @@
-from FDTD import FDTD
+from fdtd import FDTD
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import jv

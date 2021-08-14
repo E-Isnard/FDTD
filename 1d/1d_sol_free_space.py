@@ -1,5 +1,5 @@
 import numpy as np
-from FDTD import FDTD, progress
+from fdtd import FDTD, progress
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
