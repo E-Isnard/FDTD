@@ -1,7 +1,7 @@
 from fdtd import FDTD
 import numpy as np
 import matplotlib.pyplot as plt
-delta = 0.02
+delta = 0.01
 L = 1
 d = 2
 T_max = 14e-9

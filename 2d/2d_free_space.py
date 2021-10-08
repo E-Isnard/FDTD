@@ -19,7 +19,7 @@ slab_pos = 0
 epsr_func = lambda t: 1
 T_max = 200*dt
 
-fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func)
+fdtd = FDTD(L,delta,T_max,d,source_func,source_pos,L_slab,slab_pos,epsr_func,boundary_condition="PEC")
 fdtd.run()
 fdtd.animContour(-0,0.1,cmap="jet")
 fdtd.animSurface(-0.2,0.2)

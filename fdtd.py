@@ -12,7 +12,6 @@ def progress(i, n):
 
 
 class FDTD:
-    
 
     def __init__(self, L, delta, T_max, d, source_func, source_pos, L_slab, slab_pos, epsr_func, E0_func=lambda *xi: 0, H0_func=lambda *xi: 0, H0_func2=lambda *xi: 0, J_func=lambda T, *Xi: np.zeros(T.shape), cfl=None, boundary_condition="Mur", eps_0=8.85418782e-12, mu_0=4*np.pi*1e-7, memory_limit=1):
         """
@@ -43,22 +42,22 @@ class FDTD:
             x = np.linspace(0, L, self.n_space)
             x2 = x[:-1]+self.delta/2
             t = np.linspace(0, T_max, self.nt)
-            # t2 = t+self.dt/2
             X, T = np.meshgrid(x, t)
-            # X2, T2 = np.meshgrid(x, t2)
             self.Hy[0] = H0_func(x2)
             self.Ez[0] = E0_func(x)
-            # self.Hy[0] = self.Hy[0]+self.cfl/2*(self.Ez[0,1:]-self.Ez[0,:-1])
             self.J = J_func(T, X)
         if d == 2:
             x = np.linspace(0, L, self.n_space)
             y = np.linspace(0, L, self.n_space)
+            x2 = x[:-1]+self.delta/2
+            y2 = y[:-1]+self.delta/2
             t = np.linspace(0, T_max, self.nt)
             X, Y, T = np.meshgrid(x, y, t, indexing="ij")
-            X2, Y2 = np.meshgrid(x, y)
+            X2,Y2 = np.meshgrid(x,y)
+            X3, Y3 = np.meshgrid(x2, y2)
             self.Ez[0] = E0_func(X2, Y2)
-            self.Hy[0] = H0_func(X2, Y2)
-            self.Hx[0] = H0_func(X2, Y2)
+            self.Hy[0] = H0_func(X3, Y3)
+            self.Hx[0] = H0_func(X3, Y3)
             self.J = J_func(T, X, Y)
         self.source_func = source_func
         self.source_pos = source_pos
@@ -128,12 +127,7 @@ class FDTD:
                     tn)/self.epsr_func(tn+self.dt)
                 cb[j1:j2, k1:k2] = self.cfl/self.epsr_func(tn+self.dt)
 
-                self.Hx[n+1, :, 1:] = self.Hx[n, :, 1:] - \
-                    self.cfl*(self.Ez[n, :, 1:]-self.Ez[n, :, :-1])
-                self.Hy[n+1, 1:, :] = self.Hy[n, 1:, :] + \
-                    self.cfl*(self.Ez[n, 1:, :]-self.Ez[n, :-1, :])
-                self.Ez[n+1, :-1, :-1] = ca[:-1, :-1]*self.Ez[n, :-1, :-1]+cb[:-1, :-1]*(
-                    self.Hy[n+1, 1:, :-1]-self.Hy[n+1, :-1, :-1]-self.Hx[n+1, :-1, 1:]+self.Hx[n+1, :-1, :-1])
+                self.Ez[n+1,1:-1,1:-1] = ca[1:-1,1:-1]*self.Ez[n,1:-1,1:-1]+cb[1:-1,1:-1]*(self.Hy[n,1:,:-1]-self.Hy[n,:-1,:-1]-self.Hx[n,:-1,1:]+self.Hx[n,:-1,:-1])
 
                 if self.boundary_condition == "Mur":
                     self.Ez[n+1, 0, :] = self.Ez[n, 1, :]+coeff_mur * \
@@ -151,6 +145,9 @@ class FDTD:
                     self.Ez[n+1, :, -1] = 0
 
                 self.Ez[n+1, ks1, ks2] += self.source_func(tn+self.dt)
+
+                self.Hx[n+1] = self.Hx[n]-self.cfl*(self.Ez[n+1,1:,1:]-self.Ez[n+1,1:,:-1])
+                self.Hy[n+1] = self.Hy[n]+self.cfl*(self.Ez[n+1,1:,1:]-self.Ez[n+1,:-1,1:])
                 if progress_bar:
                     progress(n, self.nt-1)
             if info:
